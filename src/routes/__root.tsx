@@ -78,14 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Gestão CBD — Judicialização" },
+      { title: "Teste" },
       {
         name: "description",
         content:
           "Sistema de gestão jurídica para controle de fornecimento de CBD via judicialização.",
       },
       { name: "author", content: "Gestão CBD" },
-      { property: "og:title", content: "Gestão CBD — Judicialização" },
+      { property: "og:title", content: "Teste" },
       {
         property: "og:description",
         content:
@@ -94,6 +94,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Teste" },
+      { name: "description", content: "CBD Gestão Fácil is a local web application for managing judicial CBD supply, tracking patients, dispensations, and finances." },
+      { property: "og:description", content: "CBD Gestão Fácil is a local web application for managing judicial CBD supply, tracking patients, dispensations, and finances." },
+      { name: "twitter:description", content: "CBD Gestão Fácil is a local web application for managing judicial CBD supply, tracking patients, dispensations, and finances." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c7244b8a-7988-4914-80d5-2e37c505873f/id-preview-1d81c5ca--28d52bd1-a751-4dad-a1ef-f9052a656767.lovable.app-1782965354986.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c7244b8a-7988-4914-80d5-2e37c505873f/id-preview-1d81c5ca--28d52bd1-a751-4dad-a1ef-f9052a656767.lovable.app-1782965354986.png" },
     ],
     links: [
       {
