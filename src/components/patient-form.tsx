@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useCollection, uid, type Patient } from "@/lib/db";
+import { useCollection, uid, seedStatesIfEmpty, type Patient } from "@/lib/db";
 import { maskCPF } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -28,14 +28,19 @@ interface Props {
 
 export function PatientForm({ open, onOpenChange, editing }: Props) {
   const { items: brands } = useCollection("brands");
+  const { items: states } = useCollection("states");
   const { upsert } = useCollection("patients");
 
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
-  const [estado, setEstado] = useState<"SP" | "BA">("SP");
+  const [estado, setEstado] = useState<string>("");
   const [brandId, setBrandId] = useState<string>("");
-  const [frascos, setFrascos] = useState(1);
-  const [alerta, setAlerta] = useState<"90" | "120">("90");
+  const [frascos, setFrascos] = useState<string>("1");
+  const [alerta, setAlerta] = useState<string>("90");
+
+  useEffect(() => {
+    seedStatesIfEmpty();
+  }, []);
 
   useEffect(() => {
     if (editing) {
@@ -43,22 +48,26 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setCpf(editing.cpf);
       setEstado(editing.estado);
       setBrandId(editing.brandId ?? "");
-      setFrascos(editing.frascosPorPedido);
-      setAlerta(String(editing.alertaDias) as "90" | "120");
+      setFrascos(String(editing.frascosPorPedido));
+      setAlerta(String(editing.alertaDias));
     } else {
       setNome("");
       setCpf("");
-      setEstado("SP");
+      setEstado(states[0]?.sigla ?? "");
       setBrandId("");
-      setFrascos(1);
+      setFrascos("1");
       setAlerta("90");
     }
-  }, [editing, open]);
+  }, [editing, open, states]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim() || !cpf.trim()) {
       toast.error("Preencha nome e CPF");
+      return;
+    }
+    if (!estado) {
+      toast.error("Selecione um estado");
       return;
     }
     const p: Patient = {
@@ -67,8 +76,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       cpf,
       estado,
       brandId: brandId || null,
-      frascosPorPedido: Number(frascos) || 1,
-      alertaDias: Number(alerta) as 90 | 120,
+      frascosPorPedido: Math.max(1, parseInt(frascos, 10) || 1),
+      alertaDias: Math.max(1, parseInt(alerta, 10) || 90),
       criadoEm: editing?.criadoEm ?? new Date().toISOString(),
     };
     upsert(p);
@@ -101,13 +110,21 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
             </div>
             <div className="space-y-2">
               <Label>Estado</Label>
-              <Select value={estado} onValueChange={(v) => setEstado(v as "SP" | "BA")}>
+              <Select value={estado} onValueChange={setEstado}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SP">SP — anual</SelectItem>
-                  <SelectItem value="BA">BA — semestral</SelectItem>
+                  {states.length === 0 && (
+                    <SelectItem value="__none" disabled>
+                      Cadastre um estado primeiro
+                    </SelectItem>
+                  )}
+                  {states.map((s) => (
+                    <SelectItem key={s.id} value={s.sigla}>
+                      {s.sigla} — {s.nome} ({s.mesesFornecimento} meses)
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -137,22 +154,24 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
               <Label>Frascos por pedido</Label>
               <Input
                 type="number"
+                inputMode="numeric"
                 min={1}
+                step={1}
                 value={frascos}
-                onChange={(e) => setFrascos(Number(e.target.value))}
+                onChange={(e) => setFrascos(e.target.value.replace(/[^\d]/g, ""))}
               />
             </div>
             <div className="space-y-2">
               <Label>Alertar antes de vencer</Label>
-              <Select value={alerta} onValueChange={(v) => setAlerta(v as "90" | "120")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="90">90 dias</SelectItem>
-                  <SelectItem value="120">120 dias</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={alerta}
+                onChange={(e) => setAlerta(e.target.value.replace(/[^\d]/g, ""))}
+                placeholder="90"
+              />
             </div>
           </div>
           <DialogFooter>

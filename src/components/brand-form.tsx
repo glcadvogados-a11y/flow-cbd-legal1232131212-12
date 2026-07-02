@@ -23,18 +23,18 @@ interface Props {
 export function BrandForm({ open, onOpenChange, editing }: Props) {
   const { upsert } = useCollection("brands");
   const [nome, setNome] = useState("");
-  const [preco, setPreco] = useState(0);
-  const [pct, setPct] = useState(0);
+  const [preco, setPreco] = useState<string>("");
+  const [pct, setPct] = useState<string>("");
 
   useEffect(() => {
     if (editing) {
       setNome(editing.nome);
-      setPreco(editing.precoFrasco);
-      setPct(editing.comissaoPct);
+      setPreco(String(editing.precoFrasco));
+      setPct(String(editing.comissaoPct));
     } else {
       setNome("");
-      setPreco(0);
-      setPct(0);
+      setPreco("");
+      setPct("");
     }
   }, [editing, open]);
 
@@ -47,8 +47,8 @@ export function BrandForm({ open, onOpenChange, editing }: Props) {
     upsert({
       id: editing?.id ?? uid(),
       nome: nome.trim(),
-      precoFrasco: Number(preco),
-      comissaoPct: Number(pct),
+      precoFrasco: Number(preco) || 0,
+      comissaoPct: Number(pct) || 0,
     });
     toast.success(editing ? "Marca atualizada" : "Marca cadastrada");
     onOpenChange(false);
@@ -70,25 +70,31 @@ export function BrandForm({ open, onOpenChange, editing }: Props) {
               <Label>Preço por frasco (R$)</Label>
               <Input
                 type="number"
-                step="0.01"
+                inputMode="decimal"
+                step={1}
+                min={0}
                 value={preco}
-                onChange={(e) => setPreco(Number(e.target.value))}
+                onChange={(e) => setPreco(e.target.value)}
+                placeholder="0"
               />
             </div>
             <div className="space-y-2">
               <Label>Comissão (%)</Label>
               <Input
                 type="number"
-                step="0.01"
+                inputMode="decimal"
+                step={1}
+                min={0}
                 value={pct}
-                onChange={(e) => setPct(Number(e.target.value))}
+                onChange={(e) => setPct(e.target.value)}
+                placeholder="0"
               />
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Comissão por frasco:{" "}
             <span className="font-medium text-foreground">
-              {brl(comissaoPorFrasco(preco, pct))}
+              {brl(comissaoPorFrasco(Number(preco) || 0, Number(pct) || 0))}
             </span>
           </p>
           <DialogFooter>

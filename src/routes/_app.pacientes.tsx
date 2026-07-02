@@ -24,8 +24,9 @@ function PacientesList() {
   const { items: patients } = useCollection("patients");
   const { items: fulfillments } = useCollection("fulfillments");
   const { items: brands } = useCollection("brands");
+  const { items: states } = useCollection("states");
   const [search, setSearch] = useState("");
-  const [estado, setEstado] = useState<"all" | "SP" | "BA">("all");
+  const [estado, setEstado] = useState<string>("all");
   const [status, setStatus] = useState<"all" | "red" | "yellow" | "green" | "gray">(
     "all"
   );
@@ -85,8 +86,11 @@ function PacientesList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os estados</SelectItem>
-                <SelectItem value="SP">SP</SelectItem>
-                <SelectItem value="BA">BA</SelectItem>
+                {states.map((s) => (
+                  <SelectItem key={s.id} value={s.sigla}>
+                    {s.sigla}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
