@@ -18,6 +18,7 @@ import {
 } from "@/lib/db";
 import { comissaoPorFrasco } from "@/lib/domain";
 import { todayISO, brl } from "@/lib/format";
+import { addMonths, format } from "date-fns";
 import { toast } from "sonner";
 
 interface Props {
@@ -28,32 +29,42 @@ interface Props {
 
 export function FulfillmentForm({ open, onOpenChange, patient }: Props) {
   const { items: brands } = useCollection("brands");
+  const { items: states } = useCollection("states");
   const { upsert } = useCollection("fulfillments");
 
+  const [numeroCumprimento, setNumeroCumprimento] = useState("");
   const [dataProtocolo, setDataProtocolo] = useState(todayISO());
   const [dataDispensacao, setDataDispensacao] = useState(todayISO());
   const [dataVencimento, setDataVencimento] = useState("");
-  const [frascos, setFrascos] = useState(patient.frascosPorPedido);
-  const [valorRecebido, setValorRecebido] = useState(0);
+  const [frascos, setFrascos] = useState<string>(String(patient.frascosPorPedido));
+  const [valorRecebido, setValorRecebido] = useState<string>("0");
   const [observacoes, setObservacoes] = useState("");
 
   const brand = brands.find((b) => b.id === patient.brandId);
+  const stateInfo = states.find((s) => s.sigla === patient.estado);
 
   useEffect(() => {
     if (open) {
+      setNumeroCumprimento("");
       setDataProtocolo(todayISO());
-      setDataDispensacao(todayISO());
-      setDataVencimento("");
-      setFrascos(patient.frascosPorPedido);
-      setValorRecebido(brand ? brand.precoFrasco * patient.frascosPorPedido : 0);
+      const hoje = todayISO();
+      setDataDispensacao(hoje);
+      // sugerir vencimento com base na periodicidade do estado
+      const meses = stateInfo?.mesesFornecimento ?? 12;
+      setDataVencimento(format(addMonths(new Date(hoje), meses), "yyyy-MM-dd"));
+      setFrascos(String(patient.frascosPorPedido));
+      setValorRecebido(
+        brand ? String(brand.precoFrasco * patient.frascosPorPedido) : "0"
+      );
       setObservacoes("");
     }
-  }, [open, patient, brand]);
+  }, [open, patient, brand, stateInfo]);
 
+  const frascosN = Math.max(0, parseInt(frascos, 10) || 0);
   const comissaoUnit = brand
     ? comissaoPorFrasco(brand.precoFrasco, brand.comissaoPct)
     : 0;
-  const comissaoTotal = comissaoUnit * frascos;
+  const comissaoTotal = comissaoUnit * frascosN;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,11 +75,12 @@ export function FulfillmentForm({ open, onOpenChange, patient }: Props) {
     const f: Fulfillment = {
       id: uid(),
       patientId: patient.id,
+      numeroCumprimento: numeroCumprimento.trim(),
       dataProtocolo,
       dataDispensacao,
       dataVencimento,
-      frascos: Number(frascos),
-      valorRecebido: Number(valorRecebido),
+      frascos: frascosN,
+      valorRecebido: Number(valorRecebido) || 0,
       observacoes,
       brandIdSnapshot: brand?.id ?? null,
       brandNomeSnapshot: brand?.nome ?? "—",
@@ -88,6 +100,14 @@ export function FulfillmentForm({ open, onOpenChange, patient }: Props) {
           <DialogTitle>Novo cumprimento</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Nº do cumprimento de sentença</Label>
+            <Input
+              value={numeroCumprimento}
+              onChange={(e) => setNumeroCumprimento(e.target.value)}
+              placeholder="Ex: 1234567-89.2024.8.26.0100"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data do protocolo</Label>
@@ -122,9 +142,11 @@ export function FulfillmentForm({ open, onOpenChange, patient }: Props) {
               <Label>Frascos dispensados</Label>
               <Input
                 type="number"
+                inputMode="numeric"
                 min={1}
+                step={1}
                 value={frascos}
-                onChange={(e) => setFrascos(Number(e.target.value))}
+                onChange={(e) => setFrascos(e.target.value.replace(/[^\d]/g, ""))}
                 required
               />
             </div>
@@ -133,9 +155,11 @@ export function FulfillmentForm({ open, onOpenChange, patient }: Props) {
             <Label>Valor recebido (R$)</Label>
             <Input
               type="number"
-              step="0.01"
+              inputMode="decimal"
+              step={1}
+              min={0}
               value={valorRecebido}
-              onChange={(e) => setValorRecebido(Number(e.target.value))}
+              onChange={(e) => setValorRecebido(e.target.value)}
             />
             {brand && (
               <p className="text-xs text-muted-foreground">
