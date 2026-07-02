@@ -77,11 +77,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Gestão CBD — Judicialização" },
+      {
+        name: "description",
+        content:
+          "Sistema de gestão jurídica para controle de fornecimento de CBD via judicialização.",
+      },
+      { name: "author", content: "Gestão CBD" },
+      { property: "og:title", content: "Gestão CBD — Judicialização" },
+      {
+        property: "og:description",
+        content:
+          "Controle de pacientes, cumprimentos, marcas e financeiro para fornecimento judicial de CBD.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
