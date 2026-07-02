@@ -4,6 +4,7 @@ import {
   Users,
   Wallet,
   Package,
+  MapPin,
   LogOut,
   Download,
   Upload,
@@ -19,6 +20,7 @@ const items = [
   { title: "Pacientes", url: "/pacientes", icon: Users },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
   { title: "Marcas", url: "/marcas", icon: Package },
+  { title: "Estados", url: "/estados", icon: MapPin },
 ] as const;
 
 export function AppSidebar() {
