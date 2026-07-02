@@ -1,7 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 
-export type Estado = "SP" | "BA";
-export type AlertaDias = 90 | 120;
+export type AlertaDias = number;
+
+export interface State {
+  id: string;
+  sigla: string;
+  nome: string;
+  mesesFornecimento: number; // 12 = anual, 6 = semestral, etc.
+}
 
 export interface Brand {
   id: string;
@@ -14,7 +20,7 @@ export interface Patient {
   id: string;
   nome: string;
   cpf: string;
-  estado: Estado;
+  estado: string; // sigla do estado
   brandId: string | null;
   frascosPorPedido: number;
   alertaDias: AlertaDias;
@@ -24,6 +30,7 @@ export interface Patient {
 export interface Fulfillment {
   id: string;
   patientId: string;
+  numeroCumprimento: string;
   dataProtocolo: string;
   dataDispensacao: string;
   dataVencimento: string;
@@ -41,10 +48,16 @@ const KEYS = {
   brands: "cbd.brands",
   patients: "cbd.patients",
   fulfillments: "cbd.fulfillments",
+  states: "cbd.states",
 } as const;
 
 type Key = keyof typeof KEYS;
-type Model = { brands: Brand; patients: Patient; fulfillments: Fulfillment };
+type Model = {
+  brands: Brand;
+  patients: Patient;
+  fulfillments: Fulfillment;
+  states: State;
+};
 
 function read<K extends Key>(k: K): Model[K][] {
   if (typeof window === "undefined") return [];
@@ -116,6 +129,7 @@ export function exportAll(): string {
     brands: read("brands"),
     patients: read("patients"),
     fulfillments: read("fulfillments"),
+    states: read("states"),
     exportedAt: new Date().toISOString(),
   };
   return JSON.stringify(data, null, 2);
@@ -126,8 +140,20 @@ export function importAll(json: string) {
   if (Array.isArray(data.brands)) write("brands", data.brands);
   if (Array.isArray(data.patients)) write("patients", data.patients);
   if (Array.isArray(data.fulfillments)) write("fulfillments", data.fulfillments);
+  if (Array.isArray(data.states)) write("states", data.states);
 }
 
 export function getAll<K extends Key>(key: K): Model[K][] {
   return read(key);
+}
+
+// Seed default states on first run
+export function seedStatesIfEmpty() {
+  if (typeof window === "undefined") return;
+  const cur = read("states");
+  if (cur.length > 0) return;
+  write("states", [
+    { id: uid(), sigla: "SP", nome: "São Paulo", mesesFornecimento: 12 },
+    { id: uid(), sigla: "BA", nome: "Bahia", mesesFornecimento: 6 },
+  ]);
 }
