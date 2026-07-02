@@ -28,6 +28,7 @@ function PatientDetail() {
   const { items: patients, upsert, remove } = useCollection("patients");
   const { items: fulfillments, remove: removeFul } = useCollection("fulfillments");
   const { items: brands } = useCollection("brands");
+  const { items: states } = useCollection("states");
   const [ffOpen, setFfOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -51,6 +52,7 @@ function PatientDetail() {
     .sort((a, b) => b.dataDispensacao.localeCompare(a.dataDispensacao));
   const status = computeStatus(patient, fulfillments);
   const brand = brands.find((b) => b.id === patient.brandId);
+  const stateInfo = states.find((s) => s.sigla === patient.estado);
 
   return (
     <div className="space-y-6 p-8">
@@ -64,7 +66,8 @@ function PatientDetail() {
         <div>
           <h1 className="text-2xl font-semibold">{patient.nome}</h1>
           <p className="text-sm text-muted-foreground">
-            {patient.cpf} • {patient.estado} ({patient.estado === "SP" ? "anual" : "semestral"})
+            {patient.cpf} • {patient.estado}
+            {stateInfo && ` — ${stateInfo.nome} (${stateInfo.mesesFornecimento} meses)`}
           </p>
           <div className="mt-2">
             <StatusBadge color={status.color} label={status.label} />
@@ -156,6 +159,7 @@ function PatientDetail() {
               <table className="w-full text-sm">
                 <thead className="text-left text-muted-foreground">
                   <tr className="border-b">
+                    <th className="pb-2">Nº cumprimento</th>
                     <th className="pb-2">Protocolo</th>
                     <th className="pb-2">Dispensação</th>
                     <th className="pb-2">Vencimento</th>
@@ -169,6 +173,7 @@ function PatientDetail() {
                 <tbody>
                   {own.map((f) => (
                     <tr key={f.id} className="border-b last:border-0 align-top">
+                      <td className="py-3 font-mono text-xs">{f.numeroCumprimento || "—"}</td>
                       <td className="py-3">{formatDate(f.dataProtocolo)}</td>
                       <td className="py-3">{formatDate(f.dataDispensacao)}</td>
                       <td className="py-3">{formatDate(f.dataVencimento)}</td>
@@ -196,7 +201,7 @@ function PatientDetail() {
                   ))}
                   {own.some((f) => f.observacoes) && (
                     <tr>
-                      <td colSpan={8} className="pt-4 text-xs text-muted-foreground">
+                      <td colSpan={9} className="pt-4 text-xs text-muted-foreground">
                         Observações mais recentes:{" "}
                         {own.find((f) => f.observacoes)?.observacoes}
                       </td>
