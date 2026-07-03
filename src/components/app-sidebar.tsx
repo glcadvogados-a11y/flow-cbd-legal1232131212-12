@@ -8,6 +8,8 @@ import {
   LogOut,
   Download,
   Upload,
+  Scale,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth";
@@ -16,10 +18,12 @@ import { toast } from "sonner";
 import { useRef } from "react";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Pacientes", url: "/pacientes", icon: Users },
+  { title: "Processos", url: "/processos", icon: Scale },
+  { title: "Fornecimentos", url: "/fornecimentos", icon: Truck },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
-  { title: "Marcas", url: "/marcas", icon: Package },
+  { title: "Marcas & Produtos", url: "/marcas", icon: Package },
   { title: "Estados", url: "/estados", icon: MapPin },
 ] as const;
 
@@ -58,8 +62,8 @@ export function AppSidebar() {
       <nav className="flex-1 space-y-1 p-2">
         {items.map((item) => {
           const active =
-            item.url === "/"
-              ? pathname === "/"
+            item.url === "/dashboard"
+              ? pathname === "/dashboard" || pathname === "/"
               : pathname.startsWith(item.url);
           return (
             <Link
