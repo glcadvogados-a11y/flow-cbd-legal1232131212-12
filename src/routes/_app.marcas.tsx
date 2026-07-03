@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useCollection, type Brand } from "@/lib/db";
+import { useCollection, type Brand, type Product } from "@/lib/db";
 import { comissaoPorFrasco } from "@/lib/domain";
 import { brl } from "@/lib/format";
 import { BrandForm } from "@/components/brand-form";
+import { ProductForm } from "@/components/product-form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,18 +16,22 @@ export const Route = createFileRoute("/_app/marcas")({
 
 function Marcas() {
   const { items: brands, remove } = useCollection("brands");
+  const { items: products, remove: removeProduct } = useCollection("products");
   const { items: patients } = useCollection("patients");
   const { items: fulfillments } = useCollection("fulfillments");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Brand | null>(null);
+  const [prodOpen, setProdOpen] = useState(false);
+  const [prodBrandId, setProdBrandId] = useState<string>("");
+  const [prodEditing, setProdEditing] = useState<Product | null>(null);
 
   return (
     <div className="space-y-6 p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Marcas / Fornecedores</h1>
+          <h1 className="text-2xl font-semibold">Marcas & Produtos</h1>
           <p className="text-sm text-muted-foreground">
-            {brands.length} marca(s) cadastrada(s)
+            {brands.length} marca(s) • {products.length} produto(s)
           </p>
         </div>
         <Button
@@ -39,77 +44,147 @@ function Marcas() {
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-muted-foreground">
-                <tr className="border-b">
-                  <th className="p-4">Nome</th>
-                  <th className="p-4 text-right">Preço/frasco</th>
-                  <th className="p-4 text-right">Comissão %</th>
-                  <th className="p-4 text-right">Comissão/frasco</th>
-                  <th className="p-4"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {brands.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                      Nenhuma marca cadastrada.
-                    </td>
-                  </tr>
+      {brands.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Nenhuma marca cadastrada.
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        {brands.map((b) => {
+          const brandProducts = products.filter((p) => p.brandId === b.id);
+          return (
+            <Card key={b.id}>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">{b.nome}</h2>
+                    <p className="text-xs text-muted-foreground">
+                      {brandProducts.length} produto(s) cadastrado(s)
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setProdBrandId(b.id);
+                        setProdEditing(null);
+                        setProdOpen(true);
+                      }}
+                    >
+                      <Plus className="mr-1 h-4 w-4" /> Produto
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditing(b);
+                        setOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        const inUse =
+                          patients.some((p) => p.brandId === b.id) ||
+                          fulfillments.some((f) => f.brandIdSnapshot === b.id) ||
+                          brandProducts.length > 0;
+                        if (inUse) {
+                          toast.error("Marca com produtos ou vínculos existentes");
+                          return;
+                        }
+                        if (confirm(`Excluir marca "${b.nome}"?`)) {
+                          remove(b.id);
+                          toast.success("Marca excluída");
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                {brandProducts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">
+                    Nenhum produto — adicione Isolado / Full / Broad Spectrum com seus preços.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-muted-foreground">
+                        <tr className="border-b">
+                          <th className="pb-2">Tipo</th>
+                          <th className="pb-2 text-right">Preço/frasco</th>
+                          <th className="pb-2 text-right">Comissão %</th>
+                          <th className="pb-2 text-right">Comissão/frasco</th>
+                          <th className="pb-2 text-right">Status</th>
+                          <th className="pb-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {brandProducts.map((p) => (
+                          <tr key={p.id} className="border-b last:border-0">
+                            <td className="py-2 font-medium">{p.tipo}</td>
+                            <td className="py-2 text-right">{brl(p.precoFrasco)}</td>
+                            <td className="py-2 text-right">{p.comissaoPct}%</td>
+                            <td className="py-2 text-right">
+                              {brl(comissaoPorFrasco(p.precoFrasco, p.comissaoPct))}
+                            </td>
+                            <td className="py-2 text-right">
+                              {p.ativo ? "Ativo" : "Inativo"}
+                            </td>
+                            <td className="py-2 text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setProdBrandId(b.id);
+                                  setProdEditing(p);
+                                  setProdOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  if (confirm(`Excluir ${b.nome} — ${p.tipo}?`)) {
+                                    removeProduct(p.id);
+                                    toast.success("Produto excluído");
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-                {brands.map((b) => (
-                  <tr key={b.id} className="border-b last:border-0">
-                    <td className="p-4 font-medium">{b.nome}</td>
-                    <td className="p-4 text-right">{brl(b.precoFrasco)}</td>
-                    <td className="p-4 text-right">{b.comissaoPct}%</td>
-                    <td className="p-4 text-right">
-                      {brl(comissaoPorFrasco(b.precoFrasco, b.comissaoPct))}
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditing(b);
-                          setOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const inUse =
-                            patients.some((p) => p.brandId === b.id) ||
-                            fulfillments.some((f) => f.brandIdSnapshot === b.id);
-                          if (inUse) {
-                            toast.error(
-                              "Marca vinculada a pacientes ou cumprimentos"
-                            );
-                            return;
-                          }
-                          if (confirm(`Excluir marca "${b.nome}"?`)) {
-                            remove(b.id);
-                            toast.success("Marca excluída");
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                <p className="text-xs text-muted-foreground">
+                  Preço legado da marca (compat): {brl(b.precoFrasco)} • {b.comissaoPct}%
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       <BrandForm open={open} onOpenChange={setOpen} editing={editing} />
+      <ProductForm
+        open={prodOpen}
+        onOpenChange={setProdOpen}
+        brandId={prodBrandId}
+        editing={prodEditing}
+      />
     </div>
   );
 }
