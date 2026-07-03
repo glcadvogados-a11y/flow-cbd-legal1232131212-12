@@ -21,7 +21,7 @@ export function computeStatus(
   fulfillments: Fulfillment[]
 ): PatientStatus {
   const own = fulfillments
-    .filter((f) => f.patientId === patient.id)
+    .filter((f) => f.patientId === patient.id && (f.status ?? "repasse_recebido") === "repasse_recebido")
     .sort((a, b) => b.dataDispensacao.localeCompare(a.dataDispensacao));
   const last = own[0] ?? null;
   if (!last) {
