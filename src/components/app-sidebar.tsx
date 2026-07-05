@@ -23,7 +23,7 @@ const items = [
   { title: "Processos", url: "/processos", icon: Scale },
   { title: "Fornecimentos", url: "/fornecimentos", icon: Truck },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
-  { title: "Marcas & Produtos", url: "/marcas", icon: Package },
+  { title: "Marcas", url: "/marcas", icon: Package },
   { title: "Estados", url: "/estados", icon: MapPin },
 ] as const;
 
