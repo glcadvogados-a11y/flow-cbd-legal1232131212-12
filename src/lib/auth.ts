@@ -51,6 +51,12 @@ export function logout() {
   window.dispatchEvent(new Event("cbd-auth-change"));
 }
 
+export function resetAccount() {
+  window.localStorage.removeItem(AUTH_KEY);
+  window.sessionStorage.removeItem(SESSION_KEY);
+  window.dispatchEvent(new Event("cbd-auth-change"));
+}
+
 export function isLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
   return window.sessionStorage.getItem(SESSION_KEY) === "1";

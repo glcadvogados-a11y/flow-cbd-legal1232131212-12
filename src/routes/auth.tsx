@@ -4,8 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getAuthRecord, login, registerUser, useAuth } from "@/lib/auth";
+import { getAuthRecord, login, registerUser, resetAccount, useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -99,6 +104,42 @@ function AuthPage() {
               {hasAccount ? "Entrar" : "Criar conta"}
             </Button>
           </form>
+          {hasAccount && (
+            <div className="mt-4 text-center">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="link" size="sm" className="text-muted-foreground">
+                    Esqueci minha senha / redefinir acesso
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Redefinir acesso local?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      A conta é armazenada apenas neste navegador e não há como recuperar a senha.
+                      Esta ação apaga somente as credenciais — os dados do sistema (pacientes,
+                      processos, fornecimentos etc.) permanecem intactos. Depois você poderá criar
+                      uma nova conta.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        resetAccount();
+                        setUsername("");
+                        setPassword("");
+                        setConfirm("");
+                        toast.success("Acesso redefinido. Crie uma nova conta.");
+                      }}
+                    >
+                      Redefinir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
