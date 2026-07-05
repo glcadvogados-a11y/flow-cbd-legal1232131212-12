@@ -16,9 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCollection, uid, TIPOS_CBD, type Product, type TipoCBD } from "@/lib/db";
+import { useCollection, uid, TIPOS_CBD, MOEDAS, type Product, type TipoCBD, type Moeda } from "@/lib/db";
 import { comissaoPorFrasco } from "@/lib/domain";
-import { brl } from "@/lib/format";
+import { money } from "@/lib/format";
 import { toast } from "sonner";
 
 interface Props {
@@ -31,6 +31,7 @@ interface Props {
 export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
   const { upsert } = useCollection("products");
   const [tipo, setTipo] = useState<TipoCBD>("Full Spectrum");
+  const [moeda, setMoeda] = useState<Moeda>("BRL");
   const [preco, setPreco] = useState("");
   const [pct, setPct] = useState("");
   const [ativo, setAtivo] = useState(true);
@@ -38,11 +39,13 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
   useEffect(() => {
     if (editing) {
       setTipo(editing.tipo);
+      setMoeda(editing.moeda ?? "BRL");
       setPreco(String(editing.precoFrasco));
       setPct(String(editing.comissaoPct));
       setAtivo(editing.ativo);
     } else {
       setTipo("Full Spectrum");
+      setMoeda("BRL");
       setPreco("");
       setPct("");
       setAtivo(true);
@@ -55,6 +58,7 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
       id: editing?.id ?? uid(),
       brandId,
       tipo,
+      moeda,
       precoFrasco: Number(preco) || 0,
       comissaoPct: Number(pct) || 0,
       ativo,
@@ -70,24 +74,41 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
           <DialogTitle>{editing ? "Editar produto" : "Novo produto"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tipo</Label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v as TipoCBD)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIPOS_CBD.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as TipoCBD)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPOS_CBD.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Moeda</Label>
+              <Select value={moeda} onValueChange={(v) => setMoeda(v as Moeda)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOEDAS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m === "BRL" ? "R$ (Real)" : "US$ (Dólar)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Preço/frasco (R$)</Label>
+              <Label>Preço/frasco ({moeda === "USD" ? "US$" : "R$"})</Label>
               <Input
                 type="number"
                 inputMode="decimal"
@@ -114,7 +135,7 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
           <p className="text-sm text-muted-foreground">
             Comissão/frasco:{" "}
             <span className="font-medium text-foreground">
-              {brl(comissaoPorFrasco(Number(preco) || 0, Number(pct) || 0))}
+              {money(comissaoPorFrasco(Number(preco) || 0, Number(pct) || 0), moeda)}
             </span>
           </p>
           <DialogFooter>

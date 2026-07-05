@@ -5,6 +5,13 @@ export function brl(value: number): string {
   });
 }
 
+export function money(value: number, moeda: "BRL" | "USD" = "BRL"): string {
+  if (moeda === "USD") {
+    return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  }
+  return brl(value);
+}
+
 export function formatDate(iso: string): string {
   if (!iso) return "—";
   const [y, m, d] = iso.split("-");

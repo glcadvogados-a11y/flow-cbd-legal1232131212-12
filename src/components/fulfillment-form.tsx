@@ -157,6 +157,7 @@ export function FulfillmentForm({
           precoFrascoSnapshot: prod?.precoFrasco ?? 0,
           comissaoPctSnapshot: prod?.comissaoPct ?? 0,
           frascos: it.frascos,
+          moedaSnapshot: prod?.moeda ?? "BRL",
         };
         return {
           draft: it,
