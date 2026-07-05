@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCollection, type Brand, type Product } from "@/lib/db";
 import { comissaoPorFrasco } from "@/lib/domain";
-import { brl } from "@/lib/format";
+import { brl, money } from "@/lib/format";
 import { BrandForm } from "@/components/brand-form";
 import { ProductForm } from "@/components/product-form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
@@ -130,10 +130,10 @@ function Marcas() {
                         {brandProducts.map((p) => (
                           <tr key={p.id} className="border-b last:border-0">
                             <td className="py-2 font-medium">{p.tipo}</td>
-                            <td className="py-2 text-right">{brl(p.precoFrasco)}</td>
+                            <td className="py-2 text-right">{money(p.precoFrasco, p.moeda ?? "BRL")}</td>
                             <td className="py-2 text-right">{p.comissaoPct}%</td>
                             <td className="py-2 text-right">
-                              {brl(comissaoPorFrasco(p.precoFrasco, p.comissaoPct))}
+                              {money(comissaoPorFrasco(p.precoFrasco, p.comissaoPct), p.moeda ?? "BRL")}
                             </td>
                             <td className="py-2 text-right">
                               {p.ativo ? "Ativo" : "Inativo"}

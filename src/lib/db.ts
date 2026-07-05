@@ -25,6 +25,9 @@ export const TIPOS_CBD: TipoCBD[] = [
   "Broad Spectrum",
 ];
 
+export type Moeda = "BRL" | "USD";
+export const MOEDAS: Moeda[] = ["BRL", "USD"];
+
 export interface Product {
   id: string;
   brandId: string;
@@ -32,6 +35,7 @@ export interface Product {
   precoFrasco: number;
   comissaoPct: number;
   ativo: boolean;
+  moeda?: Moeda; // padrão BRL
 }
 
 export interface Patient {
@@ -102,6 +106,7 @@ export interface FulfillmentItem {
   precoFrascoSnapshot: number;
   comissaoPctSnapshot: number;
   frascos: number;
+  moedaSnapshot?: Moeda;
 }
 
 export interface Consulta {
