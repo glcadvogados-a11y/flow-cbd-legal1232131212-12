@@ -70,35 +70,26 @@ function PatientDetail() {
 
   const patient = patients.find((p) => p.id === id);
 
-  if (!patient) {
-    return (
-      <div className="p-8">
-        <p className="text-muted-foreground">Paciente não encontrado.</p>
-        <Link to="/pacientes">
-          <Button variant="outline" className="mt-4">Voltar</Button>
-        </Link>
-      </div>
-    );
-  }
-
   const own = fulfillments
-    .filter((f) => f.patientId === patient.id)
+    .filter((f) => patient && f.patientId === patient.id)
     .sort((a, b) => (b.dataProtocolo || "").localeCompare(a.dataProtocolo || ""));
-  const status = computeStatus(patient, fulfillments);
-  const brand = brands.find((b) => b.id === patient.brandId);
-  const stateInfo = states.find((s) => s.sigla === patient.estado);
-  const countdown = computeProtocolCountdown(patient, fulfillments);
+  const status = patient ? computeStatus(patient, fulfillments) : { color: "gray" as const, label: "—", daysToExpire: null, lastFulfillment: null };
+  const brand = brands.find((b) => b.id === patient?.brandId);
+  const stateInfo = states.find((s) => s.sigla === patient?.estado);
+  const countdown = patient
+    ? computeProtocolCountdown(patient, fulfillments)
+    : { hasData: false, daysLeft: null, deadline: null, endDate: null, duracaoDias: null, frascos: 0, frascosPorMes: null, color: "gray" as const, label: "—" };
 
-  const patientProcessos = processos.filter((p) => p.patientId === patient.id);
+  const patientProcessos = processos.filter((p) => patient && p.patientId === patient.id);
   const patientProcIds = new Set(patientProcessos.map((p) => p.id));
   const patientCumprimentos = cumprimentos.filter((c) => patientProcIds.has(c.processoId));
-  const patientConsultas = consultas.filter((c) => c.patientId === patient.id);
-  const patientReceitas = receitas.filter((r) => r.patientId === patient.id);
+  const patientConsultas = consultas.filter((c) => patient && c.patientId === patient.id);
+  const patientReceitas = receitas.filter((r) => patient && r.patientId === patient.id);
 
   const totalRecebido = own.filter(isRealized).reduce((a, f) => a + valorTotalEstado(f), 0);
   const totalProjetado = own.filter(isProjected).reduce((a, f) => a + valorTotalEstado(f), 0);
   const totalComissao = own.filter(isRealized).reduce((a, f) => a + comissaoTotal(f), 0);
-  const patientProductNames = (patient.produtos ?? [])
+  const patientProductNames = (patient?.produtos ?? [])
     .map((pp) => {
       const p = products.find((x) => x.id === pp.productId);
       const b = brands.find((br) => br.id === p?.brandId);
@@ -181,6 +172,17 @@ function PatientDetail() {
   }, [patient, own, patientProcessos, patientCumprimentos, patientConsultas, patientReceitas]);
 
   const tlFiltered = timeline.filter((e) => tlFilter === "all" || e.kind === tlFilter);
+
+  if (!patient) {
+    return (
+      <div className="p-8">
+        <p className="text-muted-foreground">Paciente não encontrado.</p>
+        <Link to="/pacientes">
+          <Button variant="outline" className="mt-4">Voltar</Button>
+        </Link>
+      </div>
+    );
+  }
 
   const kindStyle: Record<TimelineEvent["kind"], { icon: React.ElementType; color: string }> = {
     fulfillment: { icon: Package, color: "bg-blue-500" },
