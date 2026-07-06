@@ -10,11 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCollection } from "@/lib/db";
-import { computeStatus } from "@/lib/domain";
+import { computeStatus, funilStep, valorTotalEstado, frascosTotal } from "@/lib/domain";
 import { StatusBadge } from "@/components/status-badge";
 import { FulfillmentForm } from "@/components/fulfillment-form";
 import { PatientForm } from "@/components/patient-form";
 import { brl, formatDate } from "@/lib/format";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,6 +30,8 @@ function PatientDetail() {
   const { items: fulfillments, remove: removeFul } = useCollection("fulfillments");
   const { items: brands } = useCollection("brands");
   const { items: states } = useCollection("states");
+  const { items: processos } = useCollection("processos");
+  const { items: cumprimentos } = useCollection("cumprimentos");
   const [ffOpen, setFfOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -49,10 +52,26 @@ function PatientDetail() {
 
   const own = fulfillments
     .filter((f) => f.patientId === patient.id)
-    .sort((a, b) => b.dataDispensacao.localeCompare(a.dataDispensacao));
+    .sort((a, b) => (b.dataProtocolo || "").localeCompare(a.dataProtocolo || ""));
   const status = computeStatus(patient, fulfillments);
   const brand = brands.find((b) => b.id === patient.brandId);
   const stateInfo = states.find((s) => s.sigla === patient.estado);
+
+  const patientProcessos = processos.filter((p) => p.patientId === patient.id);
+  const patientProcIds = new Set(patientProcessos.map((p) => p.id));
+  const patientCumprimentos = cumprimentos.filter((c) => patientProcIds.has(c.processoId));
+
+  const leadTimes = own
+    .filter((f) => f.dataProtocolo && f.dataDispensacao)
+    .map((f) => differenceInCalendarDays(parseISO(f.dataDispensacao), parseISO(f.dataProtocolo)))
+    .filter((d) => Number.isFinite(d) && d >= 0);
+  const leadTimeMedio = leadTimes.length
+    ? Math.round(leadTimes.reduce((a, d) => a + d, 0) / leadTimes.length)
+    : null;
+  const proximoVencimento = own
+    .map((f) => f.dataVencimento)
+    .filter(Boolean)
+    .sort()[0];
 
   return (
     <div className="space-y-6 p-8">
@@ -142,6 +161,59 @@ function PatientDetail() {
         </Card>
       </div>
 
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Card><CardContent className="p-4">
+          <p className="text-xs uppercase text-muted-foreground">Cumprimentos</p>
+          <p className="mt-1 text-2xl font-semibold">{own.length}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-xs uppercase text-muted-foreground">Lead time médio</p>
+          <p className="mt-1 text-2xl font-semibold">{leadTimeMedio != null ? `${leadTimeMedio}d` : "—"}</p>
+          <p className="text-xs text-muted-foreground">protocolo → dispensação</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-xs uppercase text-muted-foreground">Próximo vencimento</p>
+          <p className="mt-1 text-2xl font-semibold">{proximoVencimento ? formatDate(proximoVencimento) : "—"}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-xs uppercase text-muted-foreground">Processos</p>
+          <p className="mt-1 text-2xl font-semibold">{patientProcessos.length}</p>
+          <p className="text-xs text-muted-foreground">{patientCumprimentos.length} cumprimento(s)</p>
+        </CardContent></Card>
+      </div>
+
+      {patientProcessos.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Processos vinculados</CardTitle></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="pb-2">Nº CNJ</th>
+                    <th className="pb-2">Tipo</th>
+                    <th className="pb-2">Vara</th>
+                    <th className="pb-2">Protocolo</th>
+                    <th className="pb-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {patientProcessos.map((p) => (
+                    <tr key={p.id} className="border-b last:border-0">
+                      <td className="py-2 font-mono text-xs">{p.numeroCNJ}</td>
+                      <td className="py-2">{p.tipo}</td>
+                      <td className="py-2">{p.vara || "—"}</td>
+                      <td className="py-2">{formatDate(p.dataProtocolo)}</td>
+                      <td className="py-2">{p.status.replace("_", " ")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Histórico de cumprimentos</CardTitle>
@@ -162,27 +234,33 @@ function PatientDetail() {
                     <th className="pb-2">Nº cumprimento</th>
                     <th className="pb-2">Protocolo</th>
                     <th className="pb-2">Dispensação</th>
+                    <th className="pb-2 text-right">Lead time</th>
                     <th className="pb-2">Vencimento</th>
                     <th className="pb-2">Marca</th>
                     <th className="pb-2 text-right">Frascos</th>
                     <th className="pb-2 text-right">Valor</th>
-                    <th className="pb-2 text-right">Comissão</th>
+                    <th className="pb-2">Status</th>
                     <th className="pb-2"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {own.map((f) => (
+                  {own.map((f) => {
+                    const lead =
+                      f.dataProtocolo && f.dataDispensacao
+                        ? differenceInCalendarDays(parseISO(f.dataDispensacao), parseISO(f.dataProtocolo))
+                        : null;
+                    const step = funilStep(f.status);
+                    return (
                     <tr key={f.id} className="border-b last:border-0 align-top">
                       <td className="py-3 font-mono text-xs">{f.numeroCumprimento || "—"}</td>
                       <td className="py-3">{formatDate(f.dataProtocolo)}</td>
                       <td className="py-3">{formatDate(f.dataDispensacao)}</td>
+                      <td className="py-3 text-right">{lead != null && lead >= 0 ? `${lead}d` : "—"}</td>
                       <td className="py-3">{formatDate(f.dataVencimento)}</td>
                       <td className="py-3">{f.brandNomeSnapshot}</td>
-                      <td className="py-3 text-right">{f.frascos}</td>
-                      <td className="py-3 text-right">{brl(f.valorRecebido)}</td>
-                      <td className="py-3 text-right">
-                        {brl(f.comissaoValorSnapshot * f.frascos)}
-                      </td>
+                      <td className="py-3 text-right">{frascosTotal(f)}</td>
+                      <td className="py-3 text-right">{brl(valorTotalEstado(f))}</td>
+                      <td className="py-3 text-xs">{step.short}</td>
                       <td className="py-3 text-right">
                         <Button
                           size="sm"
@@ -198,10 +276,11 @@ function PatientDetail() {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {own.some((f) => f.observacoes) && (
                     <tr>
-                      <td colSpan={9} className="pt-4 text-xs text-muted-foreground">
+                      <td colSpan={10} className="pt-4 text-xs text-muted-foreground">
                         Observações mais recentes:{" "}
                         {own.find((f) => f.observacoes)?.observacoes}
                       </td>
