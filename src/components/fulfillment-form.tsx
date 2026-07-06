@@ -27,6 +27,7 @@ import {
 } from "@/lib/db";
 import { FUNIL_STEPS, ETA_DIAS_DEFAULT, comissaoItem } from "@/lib/domain";
 import { brl, todayISO } from "@/lib/format";
+import { fetchHistoricRate, useFxRate } from "@/lib/fx";
 import { addMonths, format } from "date-fns";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -77,6 +78,11 @@ export function FulfillmentForm({
   const [valorVendido, setValorVendido] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [items, setItems] = useState<Draft[]>([]);
+  const [fxOrigem, setFxOrigem] = useState<"historica" | "manual" | "">("");
+  const [fxTaxa, setFxTaxa] = useState<string>("");
+  const [fxData, setFxData] = useState<string>("");
+  const [fxLoading, setFxLoading] = useState(false);
+  const { rate: rateAtual } = useFxRate();
 
   const patientProcessos = processos.filter((p) => p.patientId === patient.id);
   const patientCumprimentos = cumprimentos.filter((c) =>
@@ -108,6 +114,9 @@ export function FulfillmentForm({
         editing.valorVendidoEstado ? String(editing.valorVendidoEstado) : ""
       );
       setObservacoes(editing.observacoes ?? "");
+      setFxOrigem((editing.fxOrigem as "historica" | "manual") ?? "");
+      setFxTaxa(editing.fxTaxaFechada ? String(editing.fxTaxaFechada) : "");
+      setFxData(editing.fxDataFechamento ?? "");
       setItems(
         (editing.items ?? []).map((it) => ({
           productId: it.productId,
@@ -135,6 +144,9 @@ export function FulfillmentForm({
       setEtaDias(String(ETA_DIAS_DEFAULT));
       setValorVendido("");
       setObservacoes("");
+      setFxOrigem("");
+      setFxTaxa("");
+      setFxData(todayISO());
       // sugere um item vazio com marca preferida do paciente se houver produto
       const first = products.find((p) => p.brandId === patient.brandId && p.ativo);
       setItems(
@@ -185,6 +197,7 @@ export function FulfillmentForm({
     const firstBrand = itemLines[0].brand;
     const firstProd = itemLines[0].prod;
 
+    const fxFechada = fxTaxa ? Number(fxTaxa) : null;
     const f: Fulfillment = {
       id: editing?.id ?? uid(),
       patientId: patient.id,
@@ -216,6 +229,9 @@ export function FulfillmentForm({
       dataPagoSES: dataPagoSES || null,
       dataRepasse: dataRepasse || null,
       etaDias: Number(etaDias) || ETA_DIAS_DEFAULT,
+      fxTaxaFechada: fxFechada,
+      fxDataFechamento: fxFechada ? fxData || null : null,
+      fxOrigem: fxFechada ? (fxOrigem || null) : null,
     };
     upsert(f);
     toast.success(editing ? "Fornecimento atualizado" : "Fornecimento registrado");
@@ -440,6 +456,66 @@ export function FulfillmentForm({
               />
             </div>
           </div>
+
+          {/* Fechamento de câmbio (para itens em USD ao repassar) */}
+          {(status === "repasse_recebido" || items.some((it) => products.find((p) => p.id === it.productId)?.moeda === "USD")) && (
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Fechamento de câmbio USD → BRL</p>
+                {rateAtual && (
+                  <span className="text-xs text-muted-foreground">Cotação atual: R$ {rateAtual.toFixed(4)}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Origem</Label>
+                  <Select value={fxOrigem || "none"} onValueChange={(v) => setFxOrigem(v === "none" ? "" : (v as "historica" | "manual"))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— não fechado —</SelectItem>
+                      <SelectItem value="historica">Cotação da data</SelectItem>
+                      <SelectItem value="manual">Manual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Data do fechamento</Label>
+                  <Input type="date" value={fxData} onChange={(e) => setFxData(e.target.value)} disabled={!fxOrigem} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Taxa fechada (R$/US$)</Label>
+                  <div className="flex gap-1">
+                    <Input type="number" step="0.0001" min={0} value={fxTaxa}
+                      onChange={(e) => setFxTaxa(e.target.value)}
+                      disabled={!fxOrigem}
+                      placeholder="0,0000" />
+                    {fxOrigem === "historica" && (
+                      <Button type="button" size="sm" variant="outline" disabled={!fxData || fxLoading}
+                        onClick={async () => {
+                          if (!fxData) return;
+                          setFxLoading(true);
+                          try {
+                            const r = await fetchHistoricRate(fxData);
+                            setFxTaxa(r.toFixed(4));
+                            toast.success(`Cotação de ${fxData}: R$ ${r.toFixed(4)}`);
+                          } catch {
+                            toast.error("Cotação da data indisponível");
+                          } finally {
+                            setFxLoading(false);
+                          }
+                        }}>
+                        {fxLoading ? "..." : "Buscar"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Após fechado, o valor em BRL fica congelado — não recalcula mais com cotações futuras.
+                Fechar em até 5 dias após o pagamento.
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

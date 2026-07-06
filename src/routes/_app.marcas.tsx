@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useCollection, type Brand, type Product } from "@/lib/db";
 import { comissaoPorFrasco } from "@/lib/domain";
 import { brl, money } from "@/lib/format";
+import { useFxRate, toBRL, toUSD } from "@/lib/fx";
 import { BrandForm } from "@/components/brand-form";
 import { ProductForm } from "@/components/product-form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
@@ -19,6 +20,7 @@ function Marcas() {
   const { items: products, remove: removeProduct } = useCollection("products");
   const { items: patients } = useCollection("patients");
   const { items: fulfillments } = useCollection("fulfillments");
+  const { rate, updatedAt, loading, reload } = useFxRate();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Brand | null>(null);
   const [prodOpen, setProdOpen] = useState(false);
@@ -32,6 +34,15 @@ function Marcas() {
           <h1 className="text-2xl font-semibold">Marcas & Produtos</h1>
           <p className="text-sm text-muted-foreground">
             {brands.length} marca(s) • {products.length} produto(s)
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {rate
+              ? <>Cotação USD/BRL: <span className="font-medium text-foreground">R$ {rate.toFixed(4)}</span>
+                {updatedAt && <> • {new Date(updatedAt).toLocaleString("pt-BR")}</>}
+                <button type="button" onClick={reload} className="ml-2 underline" disabled={loading}>
+                  {loading ? "atualizando..." : "atualizar"}
+                </button></>
+              : loading ? "buscando cotação..." : "sem cotação (offline?)"}
           </p>
         </div>
         <Button
@@ -118,8 +129,9 @@ function Marcas() {
                     <table className="w-full text-sm">
                       <thead className="text-left text-muted-foreground">
                         <tr className="border-b">
-                          <th className="pb-2">Tipo</th>
+                          <th className="pb-2">Produto</th>
                           <th className="pb-2 text-right">Preço/frasco</th>
+                          <th className="pb-2 text-right">Equivalente</th>
                           <th className="pb-2 text-right">Comissão %</th>
                           <th className="pb-2 text-right">Comissão/frasco</th>
                           <th className="pb-2 text-right">Status</th>
@@ -127,13 +139,27 @@ function Marcas() {
                         </tr>
                       </thead>
                       <tbody>
-                        {brandProducts.map((p) => (
+                        {brandProducts.map((p) => {
+                          const pm = p.moeda ?? "BRL";
+                          const alt = pm === "USD" ? toBRL(p.precoFrasco, pm, rate) : toUSD(p.precoFrasco, pm, rate);
+                          const altMoeda = pm === "USD" ? "BRL" : "USD";
+                          return (
                           <tr key={p.id} className="border-b last:border-0">
-                            <td className="py-2 font-medium">{p.tipo}</td>
-                            <td className="py-2 text-right">{money(p.precoFrasco, p.moeda ?? "BRL")}</td>
+                            <td className="py-2">
+                              <div className="font-medium">{p.tipo}</div>
+                              {(p.concentracaoMg || p.volumeMl) && (
+                                <div className="text-xs text-muted-foreground">
+                                  {p.concentracaoMg ?? "?"}mg/{p.volumeMl ?? "?"}ml
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2 text-right">{money(p.precoFrasco, pm)}</td>
+                            <td className="py-2 text-right text-xs text-muted-foreground">
+                              {alt != null ? `≈ ${money(alt, altMoeda)}` : "—"}
+                            </td>
                             <td className="py-2 text-right">{p.comissaoPct}%</td>
                             <td className="py-2 text-right">
-                              {money(comissaoPorFrasco(p.precoFrasco, p.comissaoPct), p.moeda ?? "BRL")}
+                              {money(comissaoPorFrasco(p.precoFrasco, p.comissaoPct), pm)}
                             </td>
                             <td className="py-2 text-right">
                               {p.ativo ? "Ativo" : "Inativo"}
@@ -164,7 +190,8 @@ function Marcas() {
                               </Button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

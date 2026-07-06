@@ -36,6 +36,8 @@ export interface Product {
   comissaoPct: number;
   ativo: boolean;
   moeda?: Moeda; // padrão BRL
+  concentracaoMg?: number; // ex.: 1500
+  volumeMl?: number; // ex.: 30
 }
 
 export interface Patient {
@@ -160,6 +162,10 @@ export interface Fulfillment {
   dataPagoSES?: string | null;
   dataRepasse?: string | null;
   etaDias?: number; // padrão 21 (dias após L.I. p/ receber)
+  // Câmbio fechado no repasse
+  fxTaxaFechada?: number | null;
+  fxDataFechamento?: string | null;
+  fxOrigem?: "historica" | "manual" | null;
 }
 
 const KEYS = {

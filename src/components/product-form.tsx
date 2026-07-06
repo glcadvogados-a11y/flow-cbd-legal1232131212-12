@@ -34,6 +34,8 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
   const [moeda, setMoeda] = useState<Moeda>("BRL");
   const [preco, setPreco] = useState("");
   const [pct, setPct] = useState("");
+  const [mg, setMg] = useState("1500");
+  const [ml, setMl] = useState("30");
   const [ativo, setAtivo] = useState(true);
 
   useEffect(() => {
@@ -42,12 +44,16 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
       setMoeda(editing.moeda ?? "BRL");
       setPreco(String(editing.precoFrasco));
       setPct(String(editing.comissaoPct));
+      setMg(String(editing.concentracaoMg ?? 1500));
+      setMl(String(editing.volumeMl ?? 30));
       setAtivo(editing.ativo);
     } else {
       setTipo("Full Spectrum");
       setMoeda("BRL");
       setPreco("");
       setPct("");
+      setMg("1500");
+      setMl("30");
       setAtivo(true);
     }
   }, [editing, open]);
@@ -61,6 +67,8 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
       moeda,
       precoFrasco: Number(preco) || 0,
       comissaoPct: Number(pct) || 0,
+      concentracaoMg: Number(mg) || 0,
+      volumeMl: Number(ml) || 0,
       ativo,
     });
     toast.success(editing ? "Produto atualizado" : "Produto cadastrado");
@@ -129,6 +137,32 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
                 value={pct}
                 onChange={(e) => setPct(e.target.value)}
                 placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Concentração (mg)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={50}
+                value={mg}
+                onChange={(e) => setMg(e.target.value)}
+                placeholder="1500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Volume (ml)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={ml}
+                onChange={(e) => setMl(e.target.value)}
+                placeholder="30"
               />
             </div>
           </div>

@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCollection, type Moeda } from "@/lib/db";
 import { money, formatDate } from "@/lib/format";
+import { valorTotalEstado, isRealized, isProjected } from "@/lib/domain";
+import { useFxRate, toBRL } from "@/lib/fx";
 import {
   startOfMonth,
   endOfMonth,
@@ -45,7 +47,9 @@ function Financeiro() {
   const { items: fulfillments } = useCollection("fulfillments");
   const { items: patients } = useCollection("patients");
   const { items: brands } = useCollection("brands");
+  const { rate, updatedAt } = useFxRate();
   const [period, setPeriod] = useState<Period>("mes");
+  const [projMes, setProjMes] = useState<string>("todos");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [brandFilter, setBrandFilter] = useState<string>("all");
@@ -104,6 +108,40 @@ function Financeiro() {
   const patientName = (id: string) =>
     patients.find((p) => p.id === id)?.nome ?? "—";
 
+  // ===== Projeção (ano corrente, em BRL) =====
+  const anoAtual = new Date().getFullYear();
+  const toBRLFromFul = (f: (typeof fulfillments)[number]) => {
+    const items = f.items ?? [];
+    if (items.length === 0) {
+      const v = valorTotalEstado(f);
+      const m: Moeda = "BRL";
+      const usarTaxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
+      return toBRL(v, m, usarTaxa) ?? 0;
+    }
+    return items.reduce((acc, it) => {
+      const m: Moeda = (it.moedaSnapshot ?? "BRL") as Moeda;
+      const v = it.precoFrascoSnapshot * it.frascos;
+      const usarTaxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
+      const conv = toBRL(v, m, usarTaxa);
+      return acc + (conv ?? 0);
+    }, 0);
+  };
+
+  const doAno = fulfillments.filter((f) => {
+    const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo;
+    return d?.startsWith(String(anoAtual));
+  });
+  const noMes = (f: (typeof fulfillments)[number]) => {
+    if (projMes === "todos") return true;
+    const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo || "";
+    return d.slice(5, 7) === projMes;
+  };
+  const recebidoAno = doAno.filter((f) => isRealized(f)).filter(noMes)
+    .reduce((a, f) => a + toBRLFromFul(f), 0);
+  const projecaoReceber = fulfillments.filter((f) => isProjected(f) && !isRealized(f))
+    .reduce((a, f) => a + toBRLFromFul(f), 0);
+  const totalFuturo = recebidoAno + projecaoReceber;
+
   return (
     <div className="space-y-6 p-8">
       <div>
@@ -111,7 +149,44 @@ function Financeiro() {
         <p className="text-sm text-muted-foreground">
           Valor bruto vendido em CBD por período
         </p>
+        {rate && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Convertendo USD→BRL à cotação {rate.toFixed(4)}
+            {updatedAt && <> · {new Date(updatedAt).toLocaleDateString("pt-BR")}</>}
+            {" "}(fechamentos usam a taxa gravada no repasse)
+          </p>
+        )}
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Projeção {anoAtual} (em R$)</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Recebido (repasse confirmado) + projeção (em andamento, entre invoice enviado e pago pela SES)
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">Mês:</Label>
+            <Select value={projMes} onValueChange={setProjMes}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Stat label={`Recebido${projMes === "todos" ? " no ano" : ` em ${projMes}/${anoAtual}`}`} value={money(recebidoAno, "BRL")} />
+            <Stat label="A receber (projeção)" value={money(projecaoReceber, "BRL")} />
+            <Stat label="Projeção total" value={money(totalFuturo, "BRL")} />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-4">
