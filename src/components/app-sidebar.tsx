@@ -1,18 +1,16 @@
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
   Wallet,
   Package,
   MapPin,
-  LogOut,
   Download,
   Upload,
   Scale,
   Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logout } from "@/lib/auth";
 import { exportAll, importAll } from "@/lib/db";
 import { toast } from "sonner";
 import { useRef } from "react";
@@ -29,7 +27,6 @@ const items = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const doExport = () => {
@@ -109,17 +106,6 @@ export function AppSidebar() {
             e.target.value = "";
           }}
         />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
-          onClick={() => {
-            logout();
-            navigate({ to: "/auth" });
-          }}
-        >
-          <LogOut className="mr-2 h-4 w-4" /> Sair
-        </Button>
       </div>
     </aside>
   );
