@@ -67,12 +67,6 @@ function ProcessosPage() {
   const [cumpEditing, setCumpEditing] = useState<Cumprimento | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpanded((s) => ({ ...s, [id]: !s[id] }));
-  const allExpanded = filtered.length > 0 && filtered.every((p) => expanded[p.id]);
-  const setAll = (v: boolean) => {
-    const next: Record<string, boolean> = {};
-    for (const p of filtered) next[p.id] = v;
-    setExpanded(next);
-  };
 
   const patientName = (id: string) => patients.find((p) => p.id === id)?.nome ?? "—";
 
@@ -82,6 +76,12 @@ function ProcessosPage() {
   const filtered = processos.filter(
     (p) => statusFilter === "all" || normalize(p.status) === statusFilter
   );
+  const allExpanded = filtered.length > 0 && filtered.every((p) => expanded[p.id]);
+  const setAll = (v: boolean) => {
+    const next: Record<string, boolean> = {};
+    for (const p of filtered) next[p.id] = v;
+    setExpanded(next);
+  };
 
   const counts = {
     em_andamento: processos.filter((p) => normalize(p.status) === "em_andamento").length,
