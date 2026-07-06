@@ -13,7 +13,7 @@ import { useCollection, type Processo, type Cumprimento } from "@/lib/db";
 import { ProcessoForm } from "@/components/processo-form";
 import { CumprimentoForm } from "@/components/cumprimento-form";
 import { formatDate } from "@/lib/format";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/processos")({
@@ -65,6 +65,8 @@ function ProcessosPage() {
   const [cumpOpen, setCumpOpen] = useState(false);
   const [cumpProcId, setCumpProcId] = useState("");
   const [cumpEditing, setCumpEditing] = useState<Cumprimento | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setExpanded((s) => ({ ...s, [id]: !s[id] }));
 
   const patientName = (id: string) => patients.find((p) => p.id === id)?.nome ?? "—";
 
@@ -74,6 +76,12 @@ function ProcessosPage() {
   const filtered = processos.filter(
     (p) => statusFilter === "all" || normalize(p.status) === statusFilter
   );
+  const allExpanded = filtered.length > 0 && filtered.every((p) => expanded[p.id]);
+  const setAll = (v: boolean) => {
+    const next: Record<string, boolean> = {};
+    for (const p of filtered) next[p.id] = v;
+    setExpanded(next);
+  };
 
   const counts = {
     em_andamento: processos.filter((p) => normalize(p.status) === "em_andamento").length,
@@ -133,9 +141,18 @@ function ProcessosPage() {
         <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhum processo.</CardContent></Card>
       )}
 
+      {filtered.length > 0 && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="outline" onClick={() => setAll(!allExpanded)}>
+            {allExpanded ? "Fechar todos os cumprimentos" : "Abrir todos os cumprimentos"}
+          </Button>
+        </div>
+      )}
+
       <div className="space-y-3">
         {filtered.map((proc) => {
           const cumps = cumprimentos.filter((c) => c.processoId === proc.id);
+          const isOpen = expanded[proc.id] ?? false;
           return (
             <Card key={proc.id}>
               <CardContent className="p-4 space-y-3">
@@ -158,6 +175,12 @@ function ProcessosPage() {
                     )}
                   </div>
                   <div className="flex gap-1">
+                    {cumps.length > 0 && (
+                      <Button size="sm" variant="ghost" onClick={() => toggle(proc.id)}>
+                        {isOpen ? <ChevronDown className="mr-1 h-4 w-4" /> : <ChevronRight className="mr-1 h-4 w-4" />}
+                        {cumps.length} cumprimento(s)
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => { setCumpProcId(proc.id); setCumpEditing(null); setCumpOpen(true); }}>
                       <Plus className="mr-1 h-4 w-4" /> Cumprimento
                     </Button>
@@ -172,7 +195,7 @@ function ProcessosPage() {
                     </Button>
                   </div>
                 </div>
-                {cumps.length > 0 && (
+                {cumps.length > 0 && isOpen && (
                   <div className="overflow-x-auto rounded-md border">
                     <table className="w-full text-sm">
                       <thead className="text-left text-muted-foreground bg-muted/40">
