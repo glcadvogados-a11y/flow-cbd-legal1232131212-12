@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCollection, type Processo } from "@/lib/db";
+import { useCollection, type Processo, type Cumprimento } from "@/lib/db";
 import { ProcessoForm } from "@/components/processo-form";
 import { CumprimentoForm } from "@/components/cumprimento-form";
 import { formatDate } from "@/lib/format";
@@ -64,6 +64,7 @@ function ProcessosPage() {
   const [procEditing, setProcEditing] = useState<Processo | null>(null);
   const [cumpOpen, setCumpOpen] = useState(false);
   const [cumpProcId, setCumpProcId] = useState("");
+  const [cumpEditing, setCumpEditing] = useState<Cumprimento | null>(null);
 
   const patientName = (id: string) => patients.find((p) => p.id === id)?.nome ?? "—";
 
@@ -157,7 +158,7 @@ function ProcessosPage() {
                     )}
                   </div>
                   <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => { setCumpProcId(proc.id); setCumpOpen(true); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setCumpProcId(proc.id); setCumpEditing(null); setCumpOpen(true); }}>
                       <Plus className="mr-1 h-4 w-4" /> Cumprimento
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => { setProcEditing(proc); setPatientId(proc.patientId); setProcOpen(true); }}>
@@ -194,6 +195,11 @@ function ProcessosPage() {
                             <td className="p-2">{STATUS_LABEL[c.status] ?? c.status}</td>
                             <td className="p-2 text-right">
                               <Button size="sm" variant="ghost" onClick={() => {
+                                setCumpProcId(c.processoId); setCumpEditing(c); setCumpOpen(true);
+                              }}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => {
                                 if (confirm(`Excluir cumprimento ${c.numero}?`)) { removeCump(c.id); toast.success("Excluído"); }
                               }}>
                                 <Trash2 className="h-4 w-4" />
@@ -215,7 +221,7 @@ function ProcessosPage() {
         <ProcessoForm open={procOpen} onOpenChange={setProcOpen} patientId={patientId} editing={procEditing} />
       )}
       {cumpProcId && (
-        <CumprimentoForm open={cumpOpen} onOpenChange={setCumpOpen} processoId={cumpProcId} />
+        <CumprimentoForm open={cumpOpen} onOpenChange={setCumpOpen} processoId={cumpProcId} editing={cumpEditing} />
       )}
     </div>
   );
