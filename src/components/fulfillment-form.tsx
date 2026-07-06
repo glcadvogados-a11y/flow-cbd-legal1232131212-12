@@ -27,6 +27,7 @@ import {
 } from "@/lib/db";
 import { FUNIL_STEPS, ETA_DIAS_DEFAULT, comissaoItem } from "@/lib/domain";
 import { brl, todayISO } from "@/lib/format";
+import { fetchHistoricRate, useFxRate } from "@/lib/fx";
 import { addMonths, format } from "date-fns";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -77,6 +78,11 @@ export function FulfillmentForm({
   const [valorVendido, setValorVendido] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [items, setItems] = useState<Draft[]>([]);
+  const [fxOrigem, setFxOrigem] = useState<"historica" | "manual" | "">("");
+  const [fxTaxa, setFxTaxa] = useState<string>("");
+  const [fxData, setFxData] = useState<string>("");
+  const [fxLoading, setFxLoading] = useState(false);
+  const { rate: rateAtual } = useFxRate();
 
   const patientProcessos = processos.filter((p) => p.patientId === patient.id);
   const patientCumprimentos = cumprimentos.filter((c) =>
@@ -108,6 +114,9 @@ export function FulfillmentForm({
         editing.valorVendidoEstado ? String(editing.valorVendidoEstado) : ""
       );
       setObservacoes(editing.observacoes ?? "");
+      setFxOrigem((editing.fxOrigem as "historica" | "manual") ?? "");
+      setFxTaxa(editing.fxTaxaFechada ? String(editing.fxTaxaFechada) : "");
+      setFxData(editing.fxDataFechamento ?? "");
       setItems(
         (editing.items ?? []).map((it) => ({
           productId: it.productId,
@@ -135,6 +144,9 @@ export function FulfillmentForm({
       setEtaDias(String(ETA_DIAS_DEFAULT));
       setValorVendido("");
       setObservacoes("");
+      setFxOrigem("");
+      setFxTaxa("");
+      setFxData(todayISO());
       // sugere um item vazio com marca preferida do paciente se houver produto
       const first = products.find((p) => p.brandId === patient.brandId && p.ativo);
       setItems(
@@ -185,6 +197,7 @@ export function FulfillmentForm({
     const firstBrand = itemLines[0].brand;
     const firstProd = itemLines[0].prod;
 
+    const fxFechada = fxTaxa ? Number(fxTaxa) : null;
     const f: Fulfillment = {
       id: editing?.id ?? uid(),
       patientId: patient.id,
@@ -216,6 +229,9 @@ export function FulfillmentForm({
       dataPagoSES: dataPagoSES || null,
       dataRepasse: dataRepasse || null,
       etaDias: Number(etaDias) || ETA_DIAS_DEFAULT,
+      fxTaxaFechada: fxFechada,
+      fxDataFechamento: fxFechada ? fxData || null : null,
+      fxOrigem: fxFechada ? (fxOrigem || null) : null,
     };
     upsert(f);
     toast.success(editing ? "Fornecimento atualizado" : "Fornecimento registrado");
