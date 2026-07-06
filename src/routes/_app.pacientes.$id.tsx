@@ -66,6 +66,7 @@ function PatientDetail() {
   const [cumpOpen, setCumpOpen] = useState(false);
   const [cumpProcId, setCumpProcId] = useState("");
   const [cumpEditing, setCumpEditing] = useState<Cumprimento | null>(null);
+  const [tlFilter, setTlFilter] = useState<TimelineEvent["kind"] | "all">("all");
 
   const patient = patients.find((p) => p.id === id);
 
@@ -123,6 +124,7 @@ function PatientDetail() {
 
   // Unified timeline
   const timeline: TimelineEvent[] = useMemo(() => {
+    if (!patient) return [];
     const events: TimelineEvent[] = [];
     own.forEach((f) => {
       events.push({
@@ -176,9 +178,8 @@ function PatientDetail() {
       });
     });
     return events.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [own, patientProcessos, patientCumprimentos, patientConsultas, patientReceitas]);
+  }, [patient, own, patientProcessos, patientCumprimentos, patientConsultas, patientReceitas]);
 
-  const [tlFilter, setTlFilter] = useState<TimelineEvent["kind"] | "all">("all");
   const tlFiltered = timeline.filter((e) => tlFilter === "all" || e.kind === tlFilter);
 
   const kindStyle: Record<TimelineEvent["kind"], { icon: React.ElementType; color: string }> = {
