@@ -195,6 +195,11 @@ function ProcessosPage() {
                             <td className="p-2">{STATUS_LABEL[c.status] ?? c.status}</td>
                             <td className="p-2 text-right">
                               <Button size="sm" variant="ghost" onClick={() => {
+                                setCumpProcId(c.processoId); setCumpEditing(c); setCumpOpen(true);
+                              }}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => {
                                 if (confirm(`Excluir cumprimento ${c.numero}?`)) { removeCump(c.id); toast.success("Excluído"); }
                               }}>
                                 <Trash2 className="h-4 w-4" />
@@ -216,7 +221,7 @@ function ProcessosPage() {
         <ProcessoForm open={procOpen} onOpenChange={setProcOpen} patientId={patientId} editing={procEditing} />
       )}
       {cumpProcId && (
-        <CumprimentoForm open={cumpOpen} onOpenChange={setCumpOpen} processoId={cumpProcId} />
+        <CumprimentoForm open={cumpOpen} onOpenChange={setCumpOpen} processoId={cumpProcId} editing={cumpEditing} />
       )}
     </div>
   );
