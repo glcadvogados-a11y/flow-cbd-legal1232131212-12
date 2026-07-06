@@ -67,17 +67,23 @@ function Financeiro() {
     [fulfillments, interval, brandFilter, moeda]
   );
 
+  const valorBruto = (f: (typeof fulfillments)[number]) => {
+    if (f.items && f.items.length > 0) {
+      return f.items
+        .filter((it) => (it.moedaSnapshot ?? "BRL") === moeda)
+        .reduce((a, it) => a + it.precoFrascoSnapshot * it.frascos, 0);
+    }
+    return f.precoFrascoSnapshot * f.frascos;
+  };
+
   const totalRecebido = filtered.reduce((a, f) => a + f.valorRecebido, 0);
-  const totalComissao = filtered.reduce(
-    (a, f) => a + f.comissaoValorSnapshot * f.frascos,
-    0
-  );
+  const totalBruto = filtered.reduce((a, f) => a + valorBruto(f), 0);
   const totalFrascos = filtered.reduce((a, f) => a + f.frascos, 0);
 
   const porMarca = useMemo(() => {
     const map = new Map<
       string,
-      { nome: string; frascos: number; receita: number; comissao: number }
+      { nome: string; frascos: number; receita: number; bruto: number }
     >();
     for (const f of filtered) {
       const key = f.brandIdSnapshot ?? "—";
@@ -85,15 +91,15 @@ function Financeiro() {
         nome: f.brandNomeSnapshot,
         frascos: 0,
         receita: 0,
-        comissao: 0,
+        bruto: 0,
       };
       cur.frascos += f.frascos;
       cur.receita += f.valorRecebido;
-      cur.comissao += f.comissaoValorSnapshot * f.frascos;
+      cur.bruto += valorBruto(f);
       map.set(key, cur);
     }
-    return Array.from(map.values()).sort((a, b) => b.comissao - a.comissao);
-  }, [filtered]);
+    return Array.from(map.values()).sort((a, b) => b.bruto - a.bruto);
+  }, [filtered, moeda]);
 
   const patientName = (id: string) =>
     patients.find((p) => p.id === id)?.nome ?? "—";
@@ -103,7 +109,7 @@ function Financeiro() {
       <div>
         <h1 className="text-2xl font-semibold">Financeiro</h1>
         <p className="text-sm text-muted-foreground">
-          Receita e comissões por período
+          Valor bruto vendido em CBD por período
         </p>
       </div>
 
@@ -171,8 +177,8 @@ function Financeiro() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Stat label="Dispensações" value={String(filtered.length)} />
         <Stat label="Frascos" value={String(totalFrascos)} />
+        <Stat label="Valor bruto CBD" value={money(totalBruto, moeda)} />
         <Stat label="Receita (Estado)" value={money(totalRecebido, moeda)} />
-        <Stat label="Comissão" value={money(totalComissao, moeda)} />
       </div>
 
       <Card>
@@ -191,8 +197,8 @@ function Financeiro() {
                   <tr className="border-b">
                     <th className="pb-2">Marca</th>
                     <th className="pb-2 text-right">Frascos</th>
+                    <th className="pb-2 text-right">Valor bruto</th>
                     <th className="pb-2 text-right">Receita</th>
-                    <th className="pb-2 text-right">Comissão</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -200,8 +206,8 @@ function Financeiro() {
                     <tr key={r.nome} className="border-b last:border-0">
                       <td className="py-3 font-medium">{r.nome}</td>
                       <td className="py-3 text-right">{r.frascos}</td>
+                      <td className="py-3 text-right">{money(r.bruto, moeda)}</td>
                       <td className="py-3 text-right">{money(r.receita, moeda)}</td>
-                      <td className="py-3 text-right">{money(r.comissao, moeda)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -229,8 +235,8 @@ function Financeiro() {
                     <th className="pb-2">Paciente</th>
                     <th className="pb-2">Marca</th>
                     <th className="pb-2 text-right">Frascos</th>
+                    <th className="pb-2 text-right">Valor bruto</th>
                     <th className="pb-2 text-right">Valor</th>
-                    <th className="pb-2 text-right">Comissão</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -243,10 +249,8 @@ function Financeiro() {
                         <td className="py-3">{patientName(f.patientId)}</td>
                         <td className="py-3">{f.brandNomeSnapshot}</td>
                         <td className="py-3 text-right">{f.frascos}</td>
+                        <td className="py-3 text-right">{money(valorBruto(f), moeda)}</td>
                         <td className="py-3 text-right">{money(f.valorRecebido, moeda)}</td>
-                        <td className="py-3 text-right">
-                          {money(f.comissaoValorSnapshot * f.frascos, moeda)}
-                        </td>
                       </tr>
                     ))}
                 </tbody>
