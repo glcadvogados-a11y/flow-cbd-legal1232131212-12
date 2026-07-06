@@ -140,6 +140,32 @@ export function ProductForm({ open, onOpenChange, brandId, editing }: Props) {
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Concentração (mg)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={50}
+                value={mg}
+                onChange={(e) => setMg(e.target.value)}
+                placeholder="1500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Volume (ml)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={ml}
+                onChange={(e) => setMl(e.target.value)}
+                placeholder="30"
+              />
+            </div>
+          </div>
           <p className="text-sm text-muted-foreground">
             Comissão/frasco:{" "}
             <span className="font-medium text-foreground">
