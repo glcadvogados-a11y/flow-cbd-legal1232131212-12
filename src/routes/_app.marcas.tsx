@@ -130,11 +130,10 @@ function Marcas() {
                       <thead className="text-left text-muted-foreground">
                         <tr className="border-b">
                           <th className="pb-2">Produto</th>
-                          <th className="pb-2 text-center">Preço</th>
-                          <th className="pb-2 text-center"></th>
-                          <th className="pb-2 text-center">%</th>
-                          <th className="pb-2 text-center">Comissão</th>
-                          <th className="pb-2 text-center">Status</th>
+                          <th className="pb-2 px-6 text-center">Preço</th>
+                          <th className="pb-2 px-6 text-center">%</th>
+                          <th className="pb-2 px-6 text-center">Comissão</th>
+                          <th className="pb-2 px-6 text-center">Status</th>
                           <th className="pb-2"></th>
                         </tr>
                       </thead>
@@ -153,15 +152,17 @@ function Marcas() {
                                 </div>
                               )}
                             </td>
-                            <td className="py-2 text-center">{money(p.precoFrasco, pm)}</td>
-                            <td className="py-2 text-center text-xs text-muted-foreground">
-                              {alt != null ? `≈ ${money(alt, altMoeda)}` : "—"}
+                            <td className="py-2 px-6 text-center">
+                              <div>{money(p.precoFrasco, pm)}</div>
+                              <div className="text-xs text-muted-foreground leading-tight">
+                                {alt != null ? `≈ ${money(alt, altMoeda)}` : ""}
+                              </div>
                             </td>
-                            <td className="py-2 text-center">{p.comissaoPct}%</td>
-                            <td className="py-2 text-center">
+                            <td className="py-2 px-6 text-center">{p.comissaoPct}%</td>
+                            <td className="py-2 px-6 text-center">
                               {money(comissaoPorFrasco(p.precoFrasco, p.comissaoPct), pm)}
                             </td>
-                            <td className="py-2 text-center">
+                            <td className="py-2 px-6 text-center">
                               <button
                                 type="button"
                                 onClick={() => {
