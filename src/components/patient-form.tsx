@@ -16,9 +16,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useCollection, uid, seedStatesIfEmpty, type Patient } from "@/lib/db";
+import {
+  useCollection,
+  uid,
+  seedStatesIfEmpty,
+  type Patient,
+  type PatientStatusManual,
+  type PatientProduto,
+} from "@/lib/db";
 import { maskCPF } from "@/lib/format";
 import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -28,6 +36,7 @@ interface Props {
 
 export function PatientForm({ open, onOpenChange, editing }: Props) {
   const { items: brands } = useCollection("brands");
+  const { items: products } = useCollection("products");
   const { items: states } = useCollection("states");
   const { upsert } = useCollection("patients");
 
@@ -37,6 +46,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
   const [brandId, setBrandId] = useState<string>("");
   const [frascos, setFrascos] = useState<string>("1");
   const [alerta, setAlerta] = useState<string>("90");
+  const [statusManual, setStatusManual] = useState<PatientStatusManual>("auto");
+  const [produtos, setProdutos] = useState<PatientProduto[]>([]);
 
   useEffect(() => {
     seedStatesIfEmpty();
@@ -50,6 +61,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setBrandId(editing.brandId ?? "");
       setFrascos(String(editing.frascosPorPedido));
       setAlerta(String(editing.alertaDias));
+      setStatusManual(editing.statusManual ?? "auto");
+      setProdutos(editing.produtos ?? []);
     } else {
       setNome("");
       setCpf("");
@@ -57,6 +70,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setBrandId("");
       setFrascos("1");
       setAlerta("90");
+      setStatusManual("auto");
+      setProdutos([]);
     }
   }, [editing, open, states]);
 
@@ -79,6 +94,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       frascosPorPedido: Math.max(1, parseInt(frascos, 10) || 1),
       alertaDias: Math.max(1, parseInt(alerta, 10) || 90),
       criadoEm: editing?.criadoEm ?? new Date().toISOString(),
+      statusManual,
+      produtos: produtos.filter((x) => x.productId && x.frascos > 0),
     };
     upsert(p);
     toast.success(editing ? "Paciente atualizado" : "Paciente cadastrado");
@@ -173,6 +190,98 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
                 placeholder="90"
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Status do paciente</Label>
+            <Select value={statusManual} onValueChange={(v) => setStatusManual(v as PatientStatusManual)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Automático (pelos cumprimentos)</SelectItem>
+                <SelectItem value="aguardando">Aguardando cumprimento</SelectItem>
+                <SelectItem value="cumprido">Cumprido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Produtos que recebe</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setProdutos((prev) => [...prev, { productId: "", frascos: 1 }])
+                }
+              >
+                <Plus className="mr-1 h-3 w-3" /> Adicionar produto
+              </Button>
+            </div>
+            {produtos.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nenhum produto vinculado.
+              </p>
+            )}
+            {produtos.map((row, idx) => (
+              <div key={idx} className="flex gap-2">
+                <Select
+                  value={row.productId}
+                  onValueChange={(v) =>
+                    setProdutos((prev) =>
+                      prev.map((r, i) => (i === idx ? { ...r, productId: v } : r))
+                    )
+                  }
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Selecione o produto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.length === 0 && (
+                      <SelectItem value="__none" disabled>
+                        Cadastre um produto primeiro
+                      </SelectItem>
+                    )}
+                    {products.map((p) => {
+                      const b = brands.find((br) => br.id === p.brandId);
+                      return (
+                        <SelectItem key={p.id} value={p.id}>
+                          {b?.nome ?? "?"} — {p.tipo}
+                          {p.concentracaoMg ? ` ${p.concentracaoMg}mg` : ""}
+                          {p.volumeMl ? `/${p.volumeMl}ml` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  className="w-24"
+                  value={row.frascos}
+                  onChange={(e) =>
+                    setProdutos((prev) =>
+                      prev.map((r, i) =>
+                        i === idx
+                          ? { ...r, frascos: Math.max(1, parseInt(e.target.value, 10) || 1) }
+                          : r
+                      )
+                    )
+                  }
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() =>
+                    setProdutos((prev) => prev.filter((_, i) => i !== idx))
+                  }
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

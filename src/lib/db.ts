@@ -52,6 +52,15 @@ export interface Patient {
   telefone?: string;
   email?: string;
   observacoes?: string;
+  statusManual?: PatientStatusManual;
+  produtos?: PatientProduto[];
+}
+
+export type PatientStatusManual = "auto" | "aguardando" | "cumprido";
+
+export interface PatientProduto {
+  productId: string;
+  frascos: number;
 }
 
 export type ProcessoStatus =

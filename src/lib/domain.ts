@@ -20,6 +20,13 @@ export function computeStatus(
   patient: Patient,
   fulfillments: Fulfillment[]
 ): PatientStatus {
+  const manual = patient.statusManual ?? "auto";
+  if (manual === "aguardando") {
+    return { color: "yellow", label: "Aguardando cumprimento", daysToExpire: null, lastFulfillment: null };
+  }
+  if (manual === "cumprido") {
+    return { color: "green", label: "Cumprido", daysToExpire: null, lastFulfillment: null };
+  }
   const own = fulfillments
     .filter((f) => f.patientId === patient.id && (f.status ?? "repasse_recebido") === "repasse_recebido")
     .sort((a, b) => b.dataDispensacao.localeCompare(a.dataDispensacao));
