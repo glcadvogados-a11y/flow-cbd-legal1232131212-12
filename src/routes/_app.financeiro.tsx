@@ -103,7 +103,7 @@ function Financeiro() {
       <div>
         <h1 className="text-2xl font-semibold">Financeiro</h1>
         <p className="text-sm text-muted-foreground">
-          Receita e comissões por período
+          Valor bruto vendido em CBD por período
         </p>
       </div>
 
