@@ -30,7 +30,6 @@ import {
   Stethoscope,
   FileText,
   AlertCircle,
-  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 

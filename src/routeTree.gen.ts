@@ -19,6 +19,7 @@ import { Route as AppFornecimentosRouteImport } from './routes/_app.fornecimento
 import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppEstadosRouteImport } from './routes/_app.estados'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppPacientesIdRouteImport } from './routes/_app.pacientes.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -69,6 +70,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPacientesIdRoute = AppPacientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppPacientesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -78,8 +84,9 @@ export interface FileRoutesByFullPath {
   '/financeiro': typeof AppFinanceiroRoute
   '/fornecimentos': typeof AppFornecimentosRoute
   '/marcas': typeof AppMarcasRoute
-  '/pacientes': typeof AppPacientesRoute
+  '/pacientes': typeof AppPacientesRouteWithChildren
   '/processos': typeof AppProcessosRoute
+  '/pacientes/$id': typeof AppPacientesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -89,8 +96,9 @@ export interface FileRoutesByTo {
   '/financeiro': typeof AppFinanceiroRoute
   '/fornecimentos': typeof AppFornecimentosRoute
   '/marcas': typeof AppMarcasRoute
-  '/pacientes': typeof AppPacientesRoute
+  '/pacientes': typeof AppPacientesRouteWithChildren
   '/processos': typeof AppProcessosRoute
+  '/pacientes/$id': typeof AppPacientesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -102,8 +110,9 @@ export interface FileRoutesById {
   '/_app/financeiro': typeof AppFinanceiroRoute
   '/_app/fornecimentos': typeof AppFornecimentosRoute
   '/_app/marcas': typeof AppMarcasRoute
-  '/_app/pacientes': typeof AppPacientesRoute
+  '/_app/pacientes': typeof AppPacientesRouteWithChildren
   '/_app/processos': typeof AppProcessosRoute
+  '/_app/pacientes/$id': typeof AppPacientesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/marcas'
     | '/pacientes'
     | '/processos'
+    | '/pacientes/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/marcas'
     | '/pacientes'
     | '/processos'
+    | '/pacientes/$id'
   id:
     | '__root__'
     | '/'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/_app/marcas'
     | '/_app/pacientes'
     | '/_app/processos'
+    | '/_app/pacientes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -220,8 +232,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pacientes/$id': {
+      id: '/_app/pacientes/$id'
+      path: '/$id'
+      fullPath: '/pacientes/$id'
+      preLoaderRoute: typeof AppPacientesIdRouteImport
+      parentRoute: typeof AppPacientesRoute
+    }
   }
 }
+
+interface AppPacientesRouteChildren {
+  AppPacientesIdRoute: typeof AppPacientesIdRoute
+}
+
+const AppPacientesRouteChildren: AppPacientesRouteChildren = {
+  AppPacientesIdRoute: AppPacientesIdRoute,
+}
+
+const AppPacientesRouteWithChildren = AppPacientesRoute._addFileChildren(
+  AppPacientesRouteChildren,
+)
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
@@ -229,7 +260,7 @@ interface AppRouteChildren {
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppFornecimentosRoute: typeof AppFornecimentosRoute
   AppMarcasRoute: typeof AppMarcasRoute
-  AppPacientesRoute: typeof AppPacientesRoute
+  AppPacientesRoute: typeof AppPacientesRouteWithChildren
   AppProcessosRoute: typeof AppProcessosRoute
 }
 
@@ -239,7 +270,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppFornecimentosRoute: AppFornecimentosRoute,
   AppMarcasRoute: AppMarcasRoute,
-  AppPacientesRoute: AppPacientesRoute,
+  AppPacientesRoute: AppPacientesRouteWithChildren,
   AppProcessosRoute: AppProcessosRoute,
 }
 
