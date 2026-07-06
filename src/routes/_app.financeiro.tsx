@@ -149,7 +149,8 @@ function Financeiro() {
       const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo;
       if (d) set.add(Number(d.slice(0, 4)));
     }
-    set.add(new Date().getFullYear());
+    const currentYear = new Date().getFullYear();
+    for (let y = 2024; y <= currentYear; y++) set.add(y);
     return Array.from(set).sort((a, b) => b - a);
   }, [fulfillments]);
 
