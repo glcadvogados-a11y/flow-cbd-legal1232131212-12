@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
@@ -9,11 +9,14 @@ import {
   Upload,
   Scale,
   Truck,
+  LogOut,
+  CloudUpload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { exportAll, importAll } from "@/lib/db";
+import { exportAll, importAll, importFromLocalStorage } from "@/lib/db";
+import { logout, useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -27,27 +30,63 @@ const items = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
 
-  const doExport = () => {
-    const blob = new Blob([exportAll()], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `cbd-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Backup exportado");
+  const doExport = async () => {
+    setBusy(true);
+    try {
+      const json = await exportAll();
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cbd-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Backup exportado");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const doImport = async (file: File) => {
+    setBusy(true);
     try {
       const text = await file.text();
-      importAll(text);
+      await importAll(text);
       toast.success("Backup importado com sucesso");
     } catch {
       toast.error("Arquivo inválido");
+    } finally {
+      setBusy(false);
     }
+  };
+
+  const doImportLocal = async () => {
+    if (
+      !window.confirm(
+        "Enviar os dados salvos neste navegador para a nuvem? Registros com o mesmo ID serão sobrescritos.",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const { total } = await importFromLocalStorage();
+      if (total === 0) toast.info("Nada encontrado no navegador.");
+      else toast.success(`${total} registros enviados para a nuvem`);
+    } catch {
+      toast.error("Falha ao importar do navegador");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doLogout = async () => {
+    await logout();
+    navigate({ to: "/auth", replace: true });
   };
 
   return (
@@ -79,11 +118,26 @@ export function AppSidebar() {
         })}
       </nav>
       <div className="space-y-1 border-t p-2">
+        {user?.email && (
+          <p className="truncate px-2 pb-1 text-[11px] text-muted-foreground">
+            {user.email}
+          </p>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={doImportLocal}
+          disabled={busy}
+        >
+          <CloudUpload className="mr-2 h-4 w-4" /> Enviar dados do navegador
+        </Button>
         <Button
           variant="ghost"
           size="sm"
           className="w-full justify-start"
           onClick={doExport}
+          disabled={busy}
         >
           <Download className="mr-2 h-4 w-4" /> Exportar backup
         </Button>
@@ -92,6 +146,7 @@ export function AppSidebar() {
           size="sm"
           className="w-full justify-start"
           onClick={() => fileRef.current?.click()}
+          disabled={busy}
         >
           <Upload className="mr-2 h-4 w-4" /> Importar backup
         </Button>
@@ -106,6 +161,14 @@ export function AppSidebar() {
             e.target.value = "";
           }}
         />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-destructive hover:text-destructive"
+          onClick={doLogout}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Sair
+        </Button>
       </div>
     </aside>
   );
