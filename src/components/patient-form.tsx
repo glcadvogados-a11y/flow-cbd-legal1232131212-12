@@ -191,6 +191,98 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label>Status do paciente</Label>
+            <Select value={statusManual} onValueChange={(v) => setStatusManual(v as PatientStatusManual)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Automático (pelos cumprimentos)</SelectItem>
+                <SelectItem value="aguardando">Aguardando cumprimento</SelectItem>
+                <SelectItem value="cumprido">Cumprido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Produtos que recebe</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setProdutos((prev) => [...prev, { productId: "", frascos: 1 }])
+                }
+              >
+                <Plus className="mr-1 h-3 w-3" /> Adicionar produto
+              </Button>
+            </div>
+            {produtos.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nenhum produto vinculado.
+              </p>
+            )}
+            {produtos.map((row, idx) => (
+              <div key={idx} className="flex gap-2">
+                <Select
+                  value={row.productId}
+                  onValueChange={(v) =>
+                    setProdutos((prev) =>
+                      prev.map((r, i) => (i === idx ? { ...r, productId: v } : r))
+                    )
+                  }
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Selecione o produto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.length === 0 && (
+                      <SelectItem value="__none" disabled>
+                        Cadastre um produto primeiro
+                      </SelectItem>
+                    )}
+                    {products.map((p) => {
+                      const b = brands.find((br) => br.id === p.brandId);
+                      return (
+                        <SelectItem key={p.id} value={p.id}>
+                          {b?.nome ?? "?"} — {p.tipo}
+                          {p.concentracaoMg ? ` ${p.concentracaoMg}mg` : ""}
+                          {p.volumeMl ? `/${p.volumeMl}ml` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  className="w-24"
+                  value={row.frascos}
+                  onChange={(e) =>
+                    setProdutos((prev) =>
+                      prev.map((r, i) =>
+                        i === idx
+                          ? { ...r, frascos: Math.max(1, parseInt(e.target.value, 10) || 1) }
+                          : r
+                      )
+                    )
+                  }
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() =>
+                    setProdutos((prev) => prev.filter((_, i) => i !== idx))
+                  }
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
