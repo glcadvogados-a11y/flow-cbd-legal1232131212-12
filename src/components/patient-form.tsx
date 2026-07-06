@@ -44,7 +44,6 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
   const [cpf, setCpf] = useState("");
   const [estado, setEstado] = useState<string>("");
   const [brandId, setBrandId] = useState<string>("");
-  const [frascos, setFrascos] = useState<string>("1");
   const [alerta, setAlerta] = useState<string>("90");
   const [statusManual, setStatusManual] = useState<PatientStatusManual>("auto");
   const [produtos, setProdutos] = useState<PatientProduto[]>([]);
@@ -59,7 +58,6 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setCpf(editing.cpf);
       setEstado(editing.estado);
       setBrandId(editing.brandId ?? "");
-      setFrascos(String(editing.frascosPorPedido));
       setAlerta(String(editing.alertaDias));
       setStatusManual(editing.statusManual ?? "auto");
       setProdutos(editing.produtos ?? []);
@@ -68,7 +66,6 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setCpf("");
       setEstado(states[0]?.sigla ?? "");
       setBrandId("");
-      setFrascos("1");
       setAlerta("90");
       setStatusManual("auto");
       setProdutos([]);
@@ -91,7 +88,12 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       cpf,
       estado,
       brandId: brandId || null,
-      frascosPorPedido: Math.max(1, parseInt(frascos, 10) || 1),
+      frascosPorPedido: Math.max(
+        1,
+        produtos.reduce((a, x) => a + (x.frascos || 0), 0) ||
+          editing?.frascosPorPedido ||
+          1
+      ),
       alertaDias: Math.max(1, parseInt(alerta, 10) || 90),
       criadoEm: editing?.criadoEm ?? new Date().toISOString(),
       statusManual,
