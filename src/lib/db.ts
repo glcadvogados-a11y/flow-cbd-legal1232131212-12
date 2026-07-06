@@ -228,7 +228,7 @@ async function fetchCollection<K extends Key>(k: K): Promise<Model[K][]> {
     console.error("[db] fetch", k, error);
     return [];
   }
-  const items = (data ?? []).map((r) => r.data as Model[K]);
+  const items = (data ?? []).map((r) => r.data as unknown as Model[K]);
   if (k === "fulfillments") {
     return (items as unknown as Fulfillment[]).map(
       migrateFulfillment,
@@ -309,13 +309,11 @@ export function useCollection<K extends Key>(key: K) {
       else list.push(item);
       cache[key] = list;
       notify(key);
-      const { error } = await supabase
-        .from("records")
-        .upsert({
-          id: (item as { id: string }).id,
-          collection: key,
-          data: item as unknown as Record<string, unknown>,
-        });
+      const { error } = await supabase.from("records").upsert({
+        id: (item as { id: string }).id,
+        collection: key,
+        data: item as never,
+      });
       if (error) console.error("[db] upsert", key, error);
     },
     [key],
@@ -357,7 +355,7 @@ export async function importAll(json: string) {
     if (!Array.isArray(arr) || arr.length === 0) continue;
     const rows = arr
       .filter((x: unknown) => x && typeof x === "object" && "id" in (x as object))
-      .map((x: { id: string }) => ({ id: x.id, collection: k, data: x }));
+      .map((x: { id: string }) => ({ id: x.id, collection: k, data: x as never }));
     if (rows.length === 0) continue;
     const { error } = await supabase.from("records").upsert(rows);
     if (error) {
@@ -411,7 +409,11 @@ export async function seedStatesIfEmpty() {
     { id: uid(), sigla: "SP", nome: "São Paulo", mesesFornecimento: 12 },
     { id: uid(), sigla: "BA", nome: "Bahia", mesesFornecimento: 6 },
   ];
-  const rows = defaults.map((d) => ({ id: d.id, collection: "states", data: d }));
+  const rows = defaults.map((d) => ({
+    id: d.id,
+    collection: "states",
+    data: d as never,
+  }));
   const { error } = await supabase.from("records").upsert(rows);
   if (error) {
     console.error("[db] seed states", error);
