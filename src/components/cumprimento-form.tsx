@@ -320,7 +320,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                         const b = brands.find((x) => x.id === p.brandId);
                         return (
                           <SelectItem key={p.id} value={p.id}>
-                            {b?.nome ?? "?"} — {p.tipo} ({brl(p.precoFrasco)})
+                            {b?.nome ?? "?"} — {p.tipo} ({money(p.precoFrasco, p.moeda ?? "BRL")})
                           </SelectItem>
                         );
                       })}
@@ -341,14 +341,16 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                     }
                   />
                 </div>
-                <div className="col-span-2 text-right text-xs">
-                  <div>{money(l.receita, l.moeda)}</div>
-                  <div className="text-muted-foreground">
-                    {rate
-                      ? l.moeda === "USD"
-                        ? `≈ ${brl(l.receita * rate)}`
-                        : `≈ ${money(l.receita / rate, "USD")}`
-                      : "—"}
+                <div className="col-span-2 text-right text-xs leading-tight">
+                  <div className="font-medium">
+                    {money(l.receita, l.moeda)}
+                    {rate && (
+                      <span className="ml-1 text-muted-foreground">
+                        · {l.moeda === "USD"
+                          ? brl(l.receita * rate)
+                          : money(l.receita / rate, "USD")}
+                      </span>
+                    )}
                   </div>
                   <div className="text-muted-foreground">
                     Com. {money(l.comissao, l.moeda)}
