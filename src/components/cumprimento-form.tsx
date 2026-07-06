@@ -28,7 +28,8 @@ import {
   type Fulfillment,
   type FulfillmentItem,
 } from "@/lib/db";
-import { brl, todayISO } from "@/lib/format";
+import { brl, money, todayISO } from "@/lib/format";
+import { useFxRate, toBRL, toUSD } from "@/lib/fx";
 import { toast } from "sonner";
 
 interface Props {
@@ -100,13 +101,30 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
         const brand = brands.find((b) => b.id === prod?.brandId);
         const receita = (prod?.precoFrasco ?? 0) * it.frascos;
         const comissao = (receita * (prod?.comissaoPct ?? 0)) / 100;
-        return { it, prod, brand, receita, comissao };
+        const moeda = prod?.moeda ?? "BRL";
+        return { it, prod, brand, moeda, receita, comissao };
       }),
     [items, products, brands]
   );
   const totalFrascos = lines.reduce((a, l) => a + l.it.frascos, 0);
-  const totalReceita = lines.reduce((a, l) => a + l.receita, 0);
-  const totalComissao = lines.reduce((a, l) => a + l.comissao, 0);
+  const { rate } = useFxRate();
+  const totBRL = lines
+    .filter((l) => l.moeda === "BRL")
+    .reduce(
+      (a, l) => ({ receita: a.receita + l.receita, comissao: a.comissao + l.comissao }),
+      { receita: 0, comissao: 0 }
+    );
+  const totUSD = lines
+    .filter((l) => l.moeda === "USD")
+    .reduce(
+      (a, l) => ({ receita: a.receita + l.receita, comissao: a.comissao + l.comissao }),
+      { receita: 0, comissao: 0 }
+    );
+  // Totais para persistir (em BRL, convertendo se possível)
+  const totalReceita =
+    totBRL.receita + (toBRL(totUSD.receita, "USD", rate) ?? 0);
+  const totalComissao =
+    totBRL.comissao + (toBRL(totUSD.comissao, "USD", rate) ?? 0);
 
   function updateItem(i: number, patch: Partial<CumprimentoItem>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
@@ -324,8 +342,15 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                   />
                 </div>
                 <div className="col-span-2 text-right text-xs">
-                  <div>{brl(l.receita)}</div>
-                  <div className="text-muted-foreground">Com. {brl(l.comissao)}</div>
+                  <div>{money(l.receita, l.moeda)}</div>
+                  {l.moeda === "USD" && (
+                    <div className="text-muted-foreground">
+                      ≈ {rate ? brl(l.receita * rate) : "—"}
+                    </div>
+                  )}
+                  <div className="text-muted-foreground">
+                    Com. {money(l.comissao, l.moeda)}
+                  </div>
                 </div>
                 <div className="col-span-1 text-right">
                   <Button
@@ -342,12 +367,30 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
               </div>
             ))}
             {lines.length > 0 && (
-              <p className="text-right text-sm">
-                <span className="text-muted-foreground">Total: </span>
-                <span className="font-medium">
-                  {totalFrascos} frascos • {brl(totalReceita)} • Comissão {brl(totalComissao)}
-                </span>
-              </p>
+              <div className="space-y-0.5 text-right text-sm">
+                <div className="font-medium">{totalFrascos} frascos</div>
+                {totBRL.receita > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Total R$: </span>
+                    {brl(totBRL.receita)}{" "}
+                    <span className="text-muted-foreground">
+                      • Comissão {brl(totBRL.comissao)}
+                    </span>
+                  </div>
+                )}
+                {totUSD.receita > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Total US$: </span>
+                    {money(totUSD.receita, "USD")}{" "}
+                    <span className="text-muted-foreground">
+                      • Comissão {money(totUSD.comissao, "USD")}
+                      {rate && (
+                        <> • ≈ {brl(totUSD.receita * rate)} (com. {brl(totUSD.comissao * rate)})</>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -360,7 +403,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="em_andamento">Em andamento</SelectItem>
-                  <SelectItem value="concluido">Concluído (registra dispensa)</SelectItem>
+                  <SelectItem value="concluido">Concluído</SelectItem>
                   <SelectItem value="cancelado">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
