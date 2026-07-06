@@ -12,7 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCollection, type Moeda } from "@/lib/db";
 import { money, formatDate } from "@/lib/format";
-import { valorTotalEstado, isRealized, isProjected } from "@/lib/domain";
+import {
+  isRealized,
+  isProjected,
+  isCancelled,
+  comissaoItem,
+  dataRelevante,
+} from "@/lib/domain";
 import { useFxRate, toBRL } from "@/lib/fx";
 import {
   startOfMonth,
@@ -58,32 +64,59 @@ function Financeiro() {
 
   const interval = periodInterval(period, from, to);
 
-  const fulfillmentMoeda = (f: (typeof fulfillments)[number]): Moeda =>
-    (f.items?.[0]?.moedaSnapshot as Moeda | undefined) ?? "BRL";
+  const conv = (valor: number, origem: Moeda, taxa: number | null): number => {
+    if (moeda === "BRL") {
+      const brl = toBRL(valor, origem, taxa);
+      return brl ?? 0;
+    }
+    if (origem === "USD") return valor;
+    if (!taxa || taxa === 0) return 0;
+    return valor / taxa;
+  };
+
+  const nossaReceita = (f: (typeof fulfillments)[number]): number => {
+    const taxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
+    const items = f.items ?? [];
+    if (items.length === 0) {
+      return conv(f.comissaoValorSnapshot * f.frascos, "BRL", taxa);
+    }
+    return items.reduce((a, it) => {
+      const m: Moeda = (it.moedaSnapshot ?? "BRL") as Moeda;
+      return a + conv(comissaoItem(it), m, taxa);
+    }, 0);
+  };
+
+  const valorBruto = (f: (typeof fulfillments)[number]): number => {
+    const taxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
+    const items = f.items ?? [];
+    if (items.length === 0) {
+      return conv(f.precoFrascoSnapshot * f.frascos, "BRL", taxa);
+    }
+    return items.reduce((a, it) => {
+      const m: Moeda = (it.moedaSnapshot ?? "BRL") as Moeda;
+      return a + conv(it.precoFrascoSnapshot * it.frascos, m, taxa);
+    }, 0);
+  };
 
   const filtered = useMemo(
     () =>
       fulfillments.filter((f) => {
-        if (!isWithinInterval(parseISO(f.dataDispensacao), interval)) return false;
+        if (isCancelled(f)) return false;
+        const d = dataRelevante(f);
+        if (!d) return false;
+        if (!isWithinInterval(parseISO(d), interval)) return false;
         if (brandFilter !== "all" && f.brandIdSnapshot !== brandFilter) return false;
-        if (fulfillmentMoeda(f) !== moeda) return false;
         return true;
       }),
-    [fulfillments, interval, brandFilter, moeda]
+    [fulfillments, interval, brandFilter],
   );
 
-  const valorBruto = (f: (typeof fulfillments)[number]) => {
-    if (f.items && f.items.length > 0) {
-      return f.items
-        .filter((it) => (it.moedaSnapshot ?? "BRL") === moeda)
-        .reduce((a, it) => a + it.precoFrascoSnapshot * it.frascos, 0);
-    }
-    return f.precoFrascoSnapshot * f.frascos;
-  };
-
-  const totalRecebido = filtered.reduce((a, f) => a + f.valorRecebido, 0);
+  const totalReceita = filtered.reduce((a, f) => a + nossaReceita(f), 0);
   const totalBruto = filtered.reduce((a, f) => a + valorBruto(f), 0);
-  const totalFrascos = filtered.reduce((a, f) => a + f.frascos, 0);
+  const totalFrascos = filtered.reduce(
+    (a, f) => a + (f.items?.reduce((x, it) => x + it.frascos, 0) ?? f.frascos),
+    0,
+  );
 
   const porMarca = useMemo(() => {
     const map = new Map<
@@ -98,55 +131,40 @@ function Financeiro() {
         receita: 0,
         bruto: 0,
       };
-      cur.frascos += f.frascos;
-      cur.receita += f.valorRecebido;
+      const fFrascos = f.items?.reduce((x, it) => x + it.frascos, 0) ?? f.frascos;
+      cur.frascos += fFrascos;
+      cur.receita += nossaReceita(f);
       cur.bruto += valorBruto(f);
       map.set(key, cur);
     }
-    return Array.from(map.values()).sort((a, b) => b.bruto - a.bruto);
-  }, [filtered, moeda]);
+    return Array.from(map.values()).sort((a, b) => b.receita - a.receita);
+  }, [filtered, moeda, rate]);
 
   const patientName = (id: string) =>
     patients.find((p) => p.id === id)?.nome ?? "—";
 
-  // ===== Projeção (ano corrente, em BRL) =====
   const anoAtual = projAno;
-  const toDisp = (f: (typeof fulfillments)[number]) => {
-    const items = f.items ?? [];
-    if (items.length === 0) {
-      const v = valorTotalEstado(f);
-      const m: Moeda = "BRL";
-      const usarTaxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
-      const brl = toBRL(v, m, usarTaxa) ?? 0;
-      return moeda === "BRL" ? brl : (rate ? brl / rate : 0);
-    }
-    return items.reduce((acc, it) => {
-      const m: Moeda = (it.moedaSnapshot ?? "BRL") as Moeda;
-      const v = it.precoFrascoSnapshot * it.frascos;
-      const usarTaxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
-      const brl = toBRL(v, m, usarTaxa) ?? 0;
-      return acc + (moeda === "BRL" ? brl : (rate ? brl / rate : 0));
-    }, 0);
-  };
-
   const doAno = fulfillments.filter((f) => {
-    const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo;
+    if (isCancelled(f)) return false;
+    const d = dataRelevante(f);
     return d?.startsWith(String(anoAtual));
   });
   const noMes = (f: (typeof fulfillments)[number]) => {
     if (projMes === "todos") return true;
-    const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo || "";
+    const d = dataRelevante(f) || "";
     return d.slice(5, 7) === projMes;
   };
   const recebidosList = doAno.filter((f) => isRealized(f)).filter(noMes);
-  const recebidoAno = recebidosList.reduce((a, f) => a + toDisp(f), 0);
-  const abertosList = fulfillments.filter((f) => isProjected(f) && !isRealized(f));
-  const projecaoReceber = abertosList.reduce((a, f) => a + toDisp(f), 0);
+  const recebidoAno = recebidosList.reduce((a, f) => a + nossaReceita(f), 0);
+  const abertosList = fulfillments.filter(
+    (f) => isProjected(f) && !isRealized(f) && !isCancelled(f),
+  );
+  const projecaoReceber = abertosList.reduce((a, f) => a + nossaReceita(f), 0);
   const totalFuturo = recebidoAno + projecaoReceber;
   const anosDisponiveis = useMemo(() => {
     const set = new Set<number>();
     for (const f of fulfillments) {
-      const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo;
+      const d = dataRelevante(f);
       if (d) set.add(Number(d.slice(0, 4)));
     }
     const currentYear = new Date().getFullYear();
@@ -213,15 +231,15 @@ function Financeiro() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <KpiCard
-          label={`Receita recebida (${anoAtual}${projMes === "todos" ? "" : "/" + projMes})`}
+          label={`Nossa receita recebida (${anoAtual}${projMes === "todos" ? "" : "/" + projMes})`}
           value={money(recebidoAno, moeda)}
-          hint={`${recebidosList.length} pagamento(s) · ${recebidosList.length} processo(s) concluído(s)`}
+          hint={`${recebidosList.length} cumprimento(s) concluído(s)`}
           tone="success"
         />
         <KpiCard
           label="A receber (projeção)"
           value={money(projecaoReceber, moeda)}
-          hint={`${abertosList.length} cumprimento(s) · ${abertosList.length} processo(s) em aberto`}
+          hint={`${abertosList.length} cumprimento(s) em aberto`}
           tone="warning"
         />
         <KpiCard
@@ -284,13 +302,47 @@ function Financeiro() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Stat label="Dispensações" value={String(filtered.length)} />
         <Stat label="Frascos" value={String(totalFrascos)} />
-        <Stat label="Valor bruto CBD" value={money(totalBruto, moeda)} />
-        <Stat label="Receita (Estado)" value={money(totalRecebido, moeda)} />
+        <Stat label="Nossa receita" value={money(totalReceita, moeda)} />
+        <Stat label="Bruto marcas (ref.)" value={money(totalBruto, moeda)} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Por marca</CardTitle>
+          <CardTitle>Nossa receita por marca</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {porMarca.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Sem dados no período.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="pb-2">Marca</th>
+                    <th className="pb-2 text-right">Frascos</th>
+                    <th className="pb-2 text-right">Nossa receita</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {porMarca.map((r) => (
+                    <tr key={r.nome} className="border-b last:border-0">
+                      <td className="py-3 font-medium">{r.nome}</td>
+                      <td className="py-3 text-right">{r.frascos}</td>
+                      <td className="py-3 text-right">{money(r.receita, moeda)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Bruto das marcas (empresas)</CardTitle>
         </CardHeader>
         <CardContent>
           {porMarca.length === 0 ? (
@@ -305,18 +357,19 @@ function Financeiro() {
                     <th className="pb-2">Marca</th>
                     <th className="pb-2 text-right">Frascos</th>
                     <th className="pb-2 text-right">Valor bruto</th>
-                    <th className="pb-2 text-right">Receita</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {porMarca.map((r) => (
-                    <tr key={r.nome} className="border-b last:border-0">
-                      <td className="py-3 font-medium">{r.nome}</td>
-                      <td className="py-3 text-right">{r.frascos}</td>
-                      <td className="py-3 text-right">{money(r.bruto, moeda)}</td>
-                      <td className="py-3 text-right">{money(r.receita, moeda)}</td>
-                    </tr>
-                  ))}
+                  {porMarca
+                    .slice()
+                    .sort((a, b) => b.bruto - a.bruto)
+                    .map((r) => (
+                      <tr key={r.nome} className="border-b last:border-0">
+                        <td className="py-3 font-medium">{r.nome}</td>
+                        <td className="py-3 text-right">{r.frascos}</td>
+                        <td className="py-3 text-right">{money(r.bruto, moeda)}</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -342,22 +395,24 @@ function Financeiro() {
                     <th className="pb-2">Paciente</th>
                     <th className="pb-2">Marca</th>
                     <th className="pb-2 text-right">Frascos</th>
-                    <th className="pb-2 text-right">Valor bruto</th>
-                    <th className="pb-2 text-right">Valor</th>
+                    <th className="pb-2 text-right">Nossa receita</th>
+                    <th className="pb-2 text-right">Bruto marca</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered
                     .slice()
-                    .sort((a, b) => b.dataDispensacao.localeCompare(a.dataDispensacao))
+                    .sort((a, b) => (dataRelevante(b) ?? "").localeCompare(dataRelevante(a) ?? ""))
                     .map((f) => (
                       <tr key={f.id} className="border-b last:border-0">
-                        <td className="py-3">{formatDate(f.dataDispensacao)}</td>
+                        <td className="py-3">{formatDate(dataRelevante(f) ?? "")}</td>
                         <td className="py-3">{patientName(f.patientId)}</td>
                         <td className="py-3">{f.brandNomeSnapshot}</td>
-                        <td className="py-3 text-right">{f.frascos}</td>
+                        <td className="py-3 text-right">
+                          {f.items?.reduce((x, it) => x + it.frascos, 0) ?? f.frascos}
+                        </td>
+                        <td className="py-3 text-right">{money(nossaReceita(f), moeda)}</td>
                         <td className="py-3 text-right">{money(valorBruto(f), moeda)}</td>
-                        <td className="py-3 text-right">{money(f.valorRecebido, moeda)}</td>
                       </tr>
                     ))}
                 </tbody>
