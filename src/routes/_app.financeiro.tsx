@@ -379,3 +379,35 @@ function Stat({ label, value }: { label: string; value: string }) {
     </Card>
   );
 }
+
+function KpiCard({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "success" | "warning" | "default";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "text-success"
+      : tone === "warning"
+      ? "text-warning"
+      : "text-foreground";
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p className={`mt-2 text-3xl font-semibold ${toneClass}`}>{value}</p>
+        {hint && (
+          <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
