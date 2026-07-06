@@ -54,6 +54,7 @@ export interface Patient {
   observacoes?: string;
   statusManual?: PatientStatusManual;
   produtos?: PatientProduto[];
+  frascosPorMes?: number;
 }
 
 export type PatientStatusManual = "auto" | "aguardando" | "cumprido";

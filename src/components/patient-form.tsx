@@ -45,6 +45,7 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
   const [estado, setEstado] = useState<string>("");
   const [brandId, setBrandId] = useState<string>("");
   const [alerta, setAlerta] = useState<string>("90");
+  const [frascosMes, setFrascosMes] = useState<string>("");
   const [statusManual, setStatusManual] = useState<PatientStatusManual>("auto");
   const [produtos, setProdutos] = useState<PatientProduto[]>([]);
 
@@ -59,6 +60,7 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setEstado(editing.estado);
       setBrandId(editing.brandId ?? "");
       setAlerta(String(editing.alertaDias));
+      setFrascosMes(editing.frascosPorMes ? String(editing.frascosPorMes) : "");
       setStatusManual(editing.statusManual ?? "auto");
       setProdutos(editing.produtos ?? []);
     } else {
@@ -67,6 +69,7 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setEstado(states[0]?.sigla ?? "");
       setBrandId("");
       setAlerta("90");
+      setFrascosMes("");
       setStatusManual("auto");
       setProdutos([]);
     }
@@ -95,6 +98,7 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
           1
       ),
       alertaDias: Math.max(1, parseInt(alerta, 10) || 90),
+      frascosPorMes: parseInt(frascosMes, 10) > 0 ? parseInt(frascosMes, 10) : undefined,
       criadoEm: editing?.criadoEm ?? new Date().toISOString(),
       statusManual,
       produtos: produtos.filter((x) => x.productId && x.frascos > 0),
@@ -168,17 +172,31 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Alertar antes de vencer (dias)</Label>
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              step={1}
-              value={alerta}
-              onChange={(e) => setAlerta(e.target.value.replace(/[^\d]/g, ""))}
-              placeholder="90"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Frascos consumidos por mês</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={frascosMes}
+                onChange={(e) => setFrascosMes(e.target.value.replace(/[^\d]/g, ""))}
+                placeholder="ex.: 4"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Antecedência p/ protocolar (dias)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={alerta}
+                onChange={(e) => setAlerta(e.target.value.replace(/[^\d]/g, ""))}
+                placeholder="90"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Status do paciente</Label>
