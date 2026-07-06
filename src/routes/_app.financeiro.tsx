@@ -50,6 +50,7 @@ function Financeiro() {
   const { rate, updatedAt } = useFxRate();
   const [period, setPeriod] = useState<Period>("mes");
   const [projMes, setProjMes] = useState<string>("todos");
+  const [projAno, setProjAno] = useState<number>(new Date().getFullYear());
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [brandFilter, setBrandFilter] = useState<string>("all");
@@ -109,21 +110,22 @@ function Financeiro() {
     patients.find((p) => p.id === id)?.nome ?? "—";
 
   // ===== Projeção (ano corrente, em BRL) =====
-  const anoAtual = new Date().getFullYear();
-  const toBRLFromFul = (f: (typeof fulfillments)[number]) => {
+  const anoAtual = projAno;
+  const toDisp = (f: (typeof fulfillments)[number]) => {
     const items = f.items ?? [];
     if (items.length === 0) {
       const v = valorTotalEstado(f);
       const m: Moeda = "BRL";
       const usarTaxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
-      return toBRL(v, m, usarTaxa) ?? 0;
+      const brl = toBRL(v, m, usarTaxa) ?? 0;
+      return moeda === "BRL" ? brl : (rate ? brl / rate : 0);
     }
     return items.reduce((acc, it) => {
       const m: Moeda = (it.moedaSnapshot ?? "BRL") as Moeda;
       const v = it.precoFrascoSnapshot * it.frascos;
       const usarTaxa = isRealized(f) && f.fxTaxaFechada ? f.fxTaxaFechada : rate;
-      const conv = toBRL(v, m, usarTaxa);
-      return acc + (conv ?? 0);
+      const brl = toBRL(v, m, usarTaxa) ?? 0;
+      return acc + (moeda === "BRL" ? brl : (rate ? brl / rate : 0));
     }, 0);
   };
 
@@ -136,75 +138,104 @@ function Financeiro() {
     const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo || "";
     return d.slice(5, 7) === projMes;
   };
-  const recebidoAno = doAno.filter((f) => isRealized(f)).filter(noMes)
-    .reduce((a, f) => a + toBRLFromFul(f), 0);
-  const projecaoReceber = fulfillments.filter((f) => isProjected(f) && !isRealized(f))
-    .reduce((a, f) => a + toBRLFromFul(f), 0);
+  const recebidosList = doAno.filter((f) => isRealized(f)).filter(noMes);
+  const recebidoAno = recebidosList.reduce((a, f) => a + toDisp(f), 0);
+  const abertosList = fulfillments.filter((f) => isProjected(f) && !isRealized(f));
+  const projecaoReceber = abertosList.reduce((a, f) => a + toDisp(f), 0);
   const totalFuturo = recebidoAno + projecaoReceber;
+  const anosDisponiveis = useMemo(() => {
+    const set = new Set<number>();
+    for (const f of fulfillments) {
+      const d = f.dataRepasse || f.dataDispensacao || f.dataProtocolo;
+      if (d) set.add(Number(d.slice(0, 4)));
+    }
+    set.add(new Date().getFullYear());
+    return Array.from(set).sort((a, b) => b - a);
+  }, [fulfillments]);
 
   return (
     <div className="space-y-6 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Financeiro</h1>
-        <p className="text-sm text-muted-foreground">
-          Valor bruto vendido em CBD por período
-        </p>
-        {rate && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Convertendo USD→BRL à cotação {rate.toFixed(4)}
-            {updatedAt && <> · {new Date(updatedAt).toLocaleDateString("pt-BR")}</>}
-            {" "}(fechamentos usam a taxa gravada no repasse)
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Financeiro</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Receita recebida e projeções futuras
           </p>
+        </div>
+        {rate && (
+          <div className="text-right text-xs text-muted-foreground">
+            <div>PTAX atual: <span className="font-medium text-foreground">R$ {rate.toFixed(4)}</span></div>
+            {updatedAt && <div>{new Date(updatedAt).toLocaleDateString("pt-BR")}</div>}
+          </div>
         )}
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Projeção {anoAtual} (em R$)</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Recebido (repasse confirmado) + projeção (em andamento, entre invoice enviado e pago pela SES)
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs">Mês:</Label>
-            <Select value={projMes} onValueChange={setProjMes}>
-              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Stat label={`Recebido${projMes === "todos" ? " no ano" : ` em ${projMes}/${anoAtual}`}`} value={money(recebidoAno, "BRL")} />
-            <Stat label="A receber (projeção)" value={money(projecaoReceber, "BRL")} />
-            <Stat label="Projeção total" value={money(totalFuturo, "BRL")} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="space-y-1">
-              <Label className="text-xs">Moeda</Label>
+              <Label className="text-xs">Ano</Label>
+              <Select value={String(projAno)} onValueChange={(v) => setProjAno(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {anosDisponiveis.map((a) => (
+                    <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Mês</Label>
+              <Select value={projMes} onValueChange={setProjMes}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Ano inteiro</SelectItem>
+                  {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Moeda de exibição</Label>
               <Select value={moeda} onValueChange={(v) => setMoeda(v as Moeda)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="BRL">R$ (Real)</SelectItem>
                   <SelectItem value="USD">US$ (Dólar)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard
+          label={`Receita recebida (${anoAtual}${projMes === "todos" ? "" : "/" + projMes})`}
+          value={money(recebidoAno, moeda)}
+          hint={`${recebidosList.length} pagamento(s) · ${recebidosList.length} processo(s) concluído(s)`}
+          tone="success"
+        />
+        <KpiCard
+          label="A receber (projeção)"
+          value={money(projecaoReceber, moeda)}
+          hint={`${abertosList.length} cumprimento(s) · ${abertosList.length} processo(s) em aberto`}
+          tone="warning"
+        />
+        <KpiCard
+          label="Total projetado"
+          value={money(totalFuturo, moeda)}
+          hint="recebido + a receber"
+          tone="default"
+        />
+      </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="space-y-1">
-              <Label className="text-xs">Período</Label>
+              <Label className="text-xs">Período (detalhamento)</Label>
               <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
                 <SelectTrigger>
                   <SelectValue />
