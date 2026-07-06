@@ -343,11 +343,13 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                 </div>
                 <div className="col-span-2 text-right text-xs">
                   <div>{money(l.receita, l.moeda)}</div>
-                  {l.moeda === "USD" && (
-                    <div className="text-muted-foreground">
-                      ≈ {rate ? brl(l.receita * rate) : "—"}
-                    </div>
-                  )}
+                  <div className="text-muted-foreground">
+                    {rate
+                      ? l.moeda === "USD"
+                        ? `≈ ${brl(l.receita * rate)}`
+                        : `≈ ${money(l.receita / rate, "USD")}`
+                      : "—"}
+                  </div>
                   <div className="text-muted-foreground">
                     Com. {money(l.comissao, l.moeda)}
                   </div>
@@ -375,6 +377,9 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                     {brl(totBRL.receita)}{" "}
                     <span className="text-muted-foreground">
                       • Comissão {brl(totBRL.comissao)}
+                      {rate && (
+                        <> • ≈ {money(totBRL.receita / rate, "USD")} (com. {money(totBRL.comissao / rate, "USD")})</>
+                      )}
                     </span>
                   </div>
                 )}
