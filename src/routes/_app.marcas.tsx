@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_app/marcas")({
 
 function Marcas() {
   const { items: brands, remove } = useCollection("brands");
-  const { items: products, remove: removeProduct } = useCollection("products");
+  const { items: products, upsert: upsertProduct, remove: removeProduct } = useCollection("products");
   const { items: patients } = useCollection("patients");
   const { items: fulfillments } = useCollection("fulfillments");
   const { rate, updatedAt, loading, reload } = useFxRate();
@@ -130,10 +130,10 @@ function Marcas() {
                       <thead className="text-left text-muted-foreground">
                         <tr className="border-b">
                           <th className="pb-2">Produto</th>
-                          <th className="pb-2 text-right">Preço/frasco</th>
-                          <th className="pb-2 text-right">Equivalente</th>
+                          <th className="pb-2 text-right">Preço</th>
+                          <th className="pb-2 text-right"></th>
                           <th className="pb-2 text-right">Comissão %</th>
-                          <th className="pb-2 text-right">Comissão/frasco</th>
+                          <th className="pb-2 text-right">Comissão</th>
                           <th className="pb-2 text-right">Status</th>
                           <th className="pb-2"></th>
                         </tr>
@@ -162,7 +162,22 @@ function Marcas() {
                               {money(comissaoPorFrasco(p.precoFrasco, p.comissaoPct), pm)}
                             </td>
                             <td className="py-2 text-right">
-                              {p.ativo ? "Ativo" : "Inativo"}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  upsertProduct({ ...p, ativo: !p.ativo });
+                                  toast.success(p.ativo ? "Produto desativado" : "Produto ativado");
+                                }}
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  p.ativo
+                                    ? "bg-green-500/15 text-green-600 hover:bg-green-500/25 dark:text-green-400"
+                                    : "bg-red-500/15 text-red-600 hover:bg-red-500/25 dark:text-red-400"
+                                }`}
+                                title="Clique para alternar"
+                              >
+                                <span className={`h-2 w-2 rounded-full ${p.ativo ? "bg-green-500" : "bg-red-500"}`} />
+                                {p.ativo ? "Ativo" : "Inativo"}
+                              </button>
                             </td>
                             <td className="py-2 text-right">
                               <Button
