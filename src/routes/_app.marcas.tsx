@@ -132,7 +132,7 @@ function Marcas() {
                           <th className="pb-2">Produto</th>
                           <th className="pb-2 text-center">Preço</th>
                           <th className="pb-2 text-center"></th>
-                          <th className="pb-2 text-center">Comissão %</th>
+                          <th className="pb-2 text-center">%</th>
                           <th className="pb-2 text-center">Comissão</th>
                           <th className="pb-2 text-center">Status</th>
                           <th className="pb-2"></th>
