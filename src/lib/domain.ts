@@ -143,18 +143,21 @@ export const FUNIL_STEPS: FunilStep[] = [
     label: "Solicitação de invoice",
     short: "Invoice pedido",
     dateField: "dataInvoiceSolicitada",
+    projected: true,
   },
   {
     key: "invoice_enviado",
     label: "Invoice enviado",
     short: "Invoice enviado",
     dateField: "dataInvoiceEnviado",
+    projected: true,
   },
   {
     key: "aguardando_li",
     label: "Aguardando L.I.",
     short: "Aguard. L.I.",
     dateField: "dataAguardandoLI",
+    projected: true,
   },
   {
     key: "li_emitida",
