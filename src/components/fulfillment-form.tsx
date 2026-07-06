@@ -457,6 +457,66 @@ export function FulfillmentForm({
             </div>
           </div>
 
+          {/* Fechamento de câmbio (para itens em USD ao repassar) */}
+          {(status === "repasse_recebido" || items.some((it) => products.find((p) => p.id === it.productId)?.moeda === "USD")) && (
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Fechamento de câmbio USD → BRL</p>
+                {rateAtual && (
+                  <span className="text-xs text-muted-foreground">Cotação atual: R$ {rateAtual.toFixed(4)}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Origem</Label>
+                  <Select value={fxOrigem || "none"} onValueChange={(v) => setFxOrigem(v === "none" ? "" : (v as "historica" | "manual"))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— não fechado —</SelectItem>
+                      <SelectItem value="historica">Cotação da data</SelectItem>
+                      <SelectItem value="manual">Manual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Data do fechamento</Label>
+                  <Input type="date" value={fxData} onChange={(e) => setFxData(e.target.value)} disabled={!fxOrigem} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Taxa fechada (R$/US$)</Label>
+                  <div className="flex gap-1">
+                    <Input type="number" step="0.0001" min={0} value={fxTaxa}
+                      onChange={(e) => setFxTaxa(e.target.value)}
+                      disabled={!fxOrigem}
+                      placeholder="0,0000" />
+                    {fxOrigem === "historica" && (
+                      <Button type="button" size="sm" variant="outline" disabled={!fxData || fxLoading}
+                        onClick={async () => {
+                          if (!fxData) return;
+                          setFxLoading(true);
+                          try {
+                            const r = await fetchHistoricRate(fxData);
+                            setFxTaxa(r.toFixed(4));
+                            toast.success(`Cotação de ${fxData}: R$ ${r.toFixed(4)}`);
+                          } catch {
+                            toast.error("Cotação da data indisponível");
+                          } finally {
+                            setFxLoading(false);
+                          }
+                        }}>
+                        {fxLoading ? "..." : "Buscar"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Após fechado, o valor em BRL fica congelado — não recalcula mais com cotações futuras.
+                Fechar em até 5 dias após o pagamento.
+              </p>
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
