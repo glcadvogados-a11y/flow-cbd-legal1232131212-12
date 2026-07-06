@@ -341,21 +341,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                     }
                   />
                 </div>
-                <div className="col-span-2 text-right text-xs leading-tight">
-                  <div className="font-medium">
-                    {money(l.receita, l.moeda)}
-                    {rate && (
-                      <span className="ml-1 text-muted-foreground">
-                        · {l.moeda === "USD"
-                          ? brl(l.receita * rate)
-                          : money(l.receita / rate, "USD")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-muted-foreground">
-                    Com. {money(l.comissao, l.moeda)}
-                  </div>
-                </div>
+                <div className="col-span-2" />
                 <div className="col-span-1 text-right">
                   <Button
                     type="button"
@@ -376,25 +362,23 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                 {totBRL.receita > 0 && (
                   <div>
                     <span className="text-muted-foreground">Total R$: </span>
-                    {brl(totBRL.receita)}{" "}
-                    <span className="text-muted-foreground">
-                      • Comissão {brl(totBRL.comissao)}
-                      {rate && (
-                        <> • ≈ {money(totBRL.receita / rate, "USD")} (com. {money(totBRL.comissao / rate, "USD")})</>
-                      )}
-                    </span>
+                    {brl(totBRL.receita)}
+                    {rate && (
+                      <span className="text-muted-foreground">
+                        {" "}• ≈ {money(totBRL.receita / rate, "USD")}
+                      </span>
+                    )}
                   </div>
                 )}
                 {totUSD.receita > 0 && (
                   <div>
                     <span className="text-muted-foreground">Total US$: </span>
-                    {money(totUSD.receita, "USD")}{" "}
-                    <span className="text-muted-foreground">
-                      • Comissão {money(totUSD.comissao, "USD")}
-                      {rate && (
-                        <> • ≈ {brl(totUSD.receita * rate)} (com. {brl(totUSD.comissao * rate)})</>
-                      )}
-                    </span>
+                    {money(totUSD.receita, "USD")}
+                    {rate && (
+                      <span className="text-muted-foreground">
+                        {" "}• ≈ {brl(totUSD.receita * rate)}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
