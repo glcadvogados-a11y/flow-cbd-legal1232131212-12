@@ -29,7 +29,7 @@ import {
   type FulfillmentItem,
 } from "@/lib/db";
 import { brl, money, todayISO } from "@/lib/format";
-import { useFxRate, toBRL, toUSD } from "@/lib/fx";
+import { useFxRate, toBRL } from "@/lib/fx";
 import { toast } from "sonner";
 
 interface Props {
