@@ -1,16 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getAuthRecord, login, registerUser, resetAccount, useAuth } from "@/lib/auth";
-import { toast } from "sonner";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { login, useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -19,37 +20,24 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { loggedIn } = useAuth();
-  const hasAccount = !!getAuthRecord();
-  const [username, setUsername] = useState("");
+  const { loggedIn, ready } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (loggedIn) {
-    navigate({ to: "/dashboard" });
-  }
+  useEffect(() => {
+    if (ready && loggedIn) navigate({ to: "/dashboard" });
+  }, [ready, loggedIn, navigate]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      if (!hasAccount) {
-        if (password.length < 4) {
-          toast.error("Senha muito curta");
-          return;
-        }
-        if (password !== confirm) {
-          toast.error("Senhas não conferem");
-          return;
-        }
-        await registerUser(username, password);
-        toast.success("Conta criada");
+      const ok = await login(email, password);
+      if (ok) {
         navigate({ to: "/dashboard" });
       } else {
-        const ok = await login(username, password);
-        if (ok) navigate({ to: "/dashboard" });
-        else toast.error("Usuário ou senha inválidos");
+        toast.error("E-mail ou senha inválidos");
       }
     } finally {
       setLoading(false);
@@ -61,18 +49,17 @@ function AuthPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Gestão CBD</CardTitle>
-          <CardDescription>
-            {hasAccount ? "Entre com sua conta" : "Crie sua conta de acesso"}
-          </CardDescription>
+          <CardDescription>Acesso restrito</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="u">Usuário</Label>
+              <Label htmlFor="e">E-mail</Label>
               <Input
-                id="u"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="e"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="username"
               />
@@ -85,61 +72,16 @@ function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete={hasAccount ? "current-password" : "new-password"}
+                autoComplete="current-password"
               />
             </div>
-            {!hasAccount && (
-              <div className="space-y-2">
-                <Label htmlFor="c">Confirmar senha</Label>
-                <Input
-                  id="c"
-                  type="password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  required
-                />
-              </div>
-            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {hasAccount ? "Entrar" : "Criar conta"}
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          {hasAccount && (
-            <div className="mt-4 text-center">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="link" size="sm" className="text-muted-foreground">
-                    Esqueci minha senha / redefinir acesso
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Redefinir acesso local?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      A conta é armazenada apenas neste navegador e não há como recuperar a senha.
-                      Esta ação apaga somente as credenciais — os dados do sistema (pacientes,
-                      processos, fornecimentos etc.) permanecem intactos. Depois você poderá criar
-                      uma nova conta.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => {
-                        resetAccount();
-                        setUsername("");
-                        setPassword("");
-                        setConfirm("");
-                        toast.success("Acesso redefinido. Crie uma nova conta.");
-                      }}
-                    >
-                      Redefinir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Sistema interno. Contas são criadas pelo administrador.
+          </p>
         </CardContent>
       </Card>
     </div>
