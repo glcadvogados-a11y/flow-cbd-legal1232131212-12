@@ -10,12 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCollection } from "@/lib/db";
-import { computeStatus, funilStep, valorTotalEstado, frascosTotal } from "@/lib/domain";
+import { computeStatus, funilStep, valorTotalEstado, frascosTotal, computeProtocolCountdown } from "@/lib/domain";
 import { StatusBadge } from "@/components/status-badge";
 import { FulfillmentForm } from "@/components/fulfillment-form";
 import { PatientForm } from "@/components/patient-form";
 import { brl, formatDate } from "@/lib/format";
-import { differenceInCalendarDays, parseISO } from "date-fns";
+import { differenceInCalendarDays, parseISO, addMonths, format } from "date-fns";
 import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,6 +72,44 @@ function PatientDetail() {
     .map((f) => f.dataVencimento)
     .filter(Boolean)
     .sort()[0];
+
+  const countdown = computeProtocolCountdown(patient, fulfillments);
+  const lastReceived = fulfillments
+    .filter((f) => f.patientId === patient.id && (f.status ?? "repasse_recebido") === "repasse_recebido")
+    .sort((a, b) => b.dataDispensacao.localeCompare(a.dataDispensacao))[0];
+
+  // Fallback: se não tem frascosPorMes, usa meses de fornecimento do estado
+  let endFallback: string | null = null;
+  let deadlineFallback: string | null = null;
+  let daysMedFallback: number | null = null;
+  let daysProtoFallback: number | null = null;
+  if (!countdown.hasData && lastReceived && stateInfo) {
+    const end = addMonths(parseISO(lastReceived.dataDispensacao), stateInfo.mesesFornecimento);
+    endFallback = format(end, "yyyy-MM-dd");
+    const deadline = new Date(end);
+    deadline.setDate(deadline.getDate() - patient.alertaDias);
+    deadlineFallback = format(deadline, "yyyy-MM-dd");
+    daysMedFallback = differenceInCalendarDays(end, new Date());
+    daysProtoFallback = differenceInCalendarDays(deadline, new Date());
+  }
+
+  const endDate = countdown.endDate ?? endFallback;
+  const deadlineDate = countdown.deadline ?? deadlineFallback;
+  const daysToEnd = countdown.hasData && countdown.endDate
+    ? differenceInCalendarDays(parseISO(countdown.endDate), new Date())
+    : daysMedFallback;
+  const daysToProtocol = countdown.daysLeft ?? daysProtoFallback;
+  const totalDuration = countdown.duracaoDias ?? (stateInfo ? stateInfo.mesesFornecimento * 30 : null);
+  const elapsed = lastReceived && totalDuration
+    ? Math.max(0, differenceInCalendarDays(new Date(), parseISO(lastReceived.dataDispensacao)))
+    : null;
+  const pctMed = elapsed != null && totalDuration
+    ? Math.min(100, Math.round((elapsed / totalDuration) * 100))
+    : 0;
+  const protocolWindow = patient.alertaDias;
+  const pctProto = totalDuration
+    ? Math.min(100, Math.max(0, Math.round(((elapsed ?? 0) / Math.max(1, totalDuration - protocolWindow)) * 100)))
+    : 0;
 
   return (
     <div className="space-y-6 p-8">
@@ -160,6 +198,93 @@ function PatientDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>CRM — próxima janela de protocolo</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!lastReceived ? (
+            <p className="py-4 text-sm text-muted-foreground">
+              Nenhuma dispensação registrada ainda.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 text-sm">
+                <div>
+                  <p className="text-xs uppercase text-muted-foreground">Última dispensação</p>
+                  <p className="mt-1 font-medium">{formatDate(lastReceived.dataDispensacao)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {frascosTotal(lastReceived)} frascos
+                    {patient.frascosPorMes ? ` • ${patient.frascosPorMes}/mês` : stateInfo ? ` • estado: ${stateInfo.mesesFornecimento}m` : ""}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase text-muted-foreground">Fim estimado do medicamento</p>
+                  <p className="mt-1 font-medium">{endDate ? formatDate(endDate) : "—"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {daysToEnd != null ? (daysToEnd >= 0 ? `${daysToEnd} dias restantes` : `${Math.abs(daysToEnd)} dias atrás`) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase text-muted-foreground">Prazo p/ novo protocolo</p>
+                  <p className="mt-1 font-medium">{deadlineDate ? formatDate(deadlineDate) : "—"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    antecedência de {patient.alertaDias}d
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Consumo do medicamento</span>
+                  <span className="font-medium">
+                    {daysToEnd != null && daysToEnd >= 0 ? `${daysToEnd}d p/ acabar` : daysToEnd != null ? `acabou há ${Math.abs(daysToEnd)}d` : "—"}
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full ${pctMed >= 100 ? "bg-red-500" : pctMed >= 75 ? "bg-yellow-500" : "bg-green-500"}`}
+                    style={{ width: `${pctMed}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Janela para protocolar novo pedido</span>
+                  <span className="font-medium">
+                    {daysToProtocol != null
+                      ? daysToProtocol > 0
+                        ? `${daysToProtocol}d restantes`
+                        : daysToProtocol === 0
+                          ? "Protocolar hoje"
+                          : `atrasado ${Math.abs(daysToProtocol)}d`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full ${
+                      daysToProtocol != null && daysToProtocol < 0
+                        ? "bg-red-500"
+                        : daysToProtocol != null && daysToProtocol <= 30
+                          ? "bg-yellow-500"
+                          : "bg-blue-500"
+                    }`}
+                    style={{ width: `${pctProto}%` }}
+                  />
+                </div>
+                {!patient.frascosPorMes && (
+                  <p className="text-xs text-muted-foreground">
+                    Dica: informe "frascos por mês" no cadastro do paciente para um cálculo preciso — usando fallback do estado.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card><CardContent className="p-4">
