@@ -96,6 +96,15 @@ export interface Cumprimento {
   periodoFim?: string;
   status: CumprimentoStatus;
   observacoes?: string;
+  duracaoMeses?: number;
+  dataConclusao?: string;
+  items?: CumprimentoItem[];
+  fulfillmentId?: string | null;
+}
+
+export interface CumprimentoItem {
+  productId: string | null;
+  frascos: number;
 }
 
 export type FunilStatus =
