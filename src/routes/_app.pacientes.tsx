@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCollection, type Patient } from "@/lib/db";
-import { computeStatus } from "@/lib/domain";
+import { computeStatus, computeProtocolCountdown } from "@/lib/domain";
 import { StatusBadge } from "@/components/status-badge";
+import { formatDate } from "@/lib/format";
 import { PatientForm } from "@/components/patient-form";
 import { Plus, Pencil } from "lucide-react";
 
@@ -36,7 +37,11 @@ function PacientesList() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return patients
-      .map((p) => ({ p, s: computeStatus(p, fulfillments) }))
+      .map((p) => ({
+        p,
+        s: computeStatus(p, fulfillments),
+        c: computeProtocolCountdown(p, fulfillments),
+      }))
       .filter(({ p, s }) => {
         if (estado !== "all" && p.estado !== estado) return false;
         if (status !== "all" && s.color !== status) return false;
@@ -47,6 +52,11 @@ function PacientesList() {
         )
           return false;
         return true;
+      })
+      .sort((a, b) => {
+        const av = a.c.daysLeft ?? Number.POSITIVE_INFINITY;
+        const bv = b.c.daysLeft ?? Number.POSITIVE_INFINITY;
+        return av - bv;
       });
   }, [patients, fulfillments, search, estado, status]);
 
@@ -120,18 +130,19 @@ function PacientesList() {
                   <th className="p-4">Estado</th>
                   <th className="p-4">Marca</th>
                   <th className="p-4">Status</th>
+                  <th className="p-4">Próx. protocolo</th>
                   <th className="p-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
                       Nenhum paciente encontrado.
                     </td>
                   </tr>
                 )}
-                {filtered.map(({ p, s }) => (
+                {filtered.map(({ p, s, c }) => (
                   <tr key={p.id} className="border-b last:border-0 hover:bg-muted/40">
                     <td className="p-4 font-medium">
                       <Link to="/pacientes/$id" params={{ id: p.id }} className="hover:underline">
@@ -143,6 +154,20 @@ function PacientesList() {
                     <td className="p-4">{brandName(p.brandId)}</td>
                     <td className="p-4">
                       <StatusBadge color={s.color} label={s.label} />
+                    </td>
+                    <td className="p-4">
+                      {c.hasData ? (
+                        <div className="space-y-1">
+                          <StatusBadge color={c.color} label={c.label} />
+                          {c.deadline && (
+                            <div className="text-xs text-muted-foreground">
+                              até {formatDate(c.deadline)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{c.label}</span>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <Button
