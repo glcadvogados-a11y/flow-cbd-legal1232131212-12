@@ -22,12 +22,37 @@ export const Route = createFileRoute("/_app/processos")({
 
 const STATUS_LABEL: Record<string, string> = {
   em_andamento: "Em andamento",
-  ganho: "Ganho",
-  perdido: "Perdido",
-  encerrado: "Encerrado",
   concluido: "Concluído",
+  suspenso: "Suspenso",
   cancelado: "Cancelado",
 };
+
+function StatusKpi({
+  label,
+  value,
+  barClass,
+  total,
+}: {
+  label: string;
+  value: number;
+  barClass: string;
+  total: number;
+}) {
+  const pct = total > 0 ? Math.max(6, Math.round((value / total) * 100)) : 0;
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div className={`h-full ${barClass}`} style={{ width: `${pct}%` }} />
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-2xl font-semibold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function ProcessosPage() {
   const { items: processos, remove } = useCollection("processos");
@@ -42,9 +67,18 @@ function ProcessosPage() {
 
   const patientName = (id: string) => patients.find((p) => p.id === id)?.nome ?? "—";
 
+  const normalize = (s: string) =>
+    s === "concluido" || s === "suspenso" ? s : "em_andamento";
+
   const filtered = processos.filter(
-    (p) => statusFilter === "all" || p.status === statusFilter
+    (p) => statusFilter === "all" || normalize(p.status) === statusFilter
   );
+
+  const counts = {
+    em_andamento: processos.filter((p) => normalize(p.status) === "em_andamento").length,
+    concluido: processos.filter((p) => normalize(p.status) === "concluido").length,
+    suspenso: processos.filter((p) => normalize(p.status) === "suspenso").length,
+  };
 
   return (
     <div className="space-y-6 p-8">
@@ -52,10 +86,19 @@ function ProcessosPage() {
         <div>
           <h1 className="text-2xl font-semibold">Processos</h1>
           <p className="text-sm text-muted-foreground">
-            {processos.length} processo(s) • {cumprimentos.length} cumprimento(s)
+            {processos.length} processo(s) — controle de status e situação
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="em_andamento">Em andamento</SelectItem>
+              <SelectItem value="concluido">Concluído</SelectItem>
+              <SelectItem value="suspenso">Suspenso</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={patientId} onValueChange={setPatientId}>
             <SelectTrigger className="w-56"><SelectValue placeholder="Paciente para novo processo" /></SelectTrigger>
             <SelectContent>
@@ -79,21 +122,11 @@ function ProcessosPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4 flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Status:</span>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="em_andamento">Em andamento</SelectItem>
-              <SelectItem value="ganho">Ganho</SelectItem>
-              <SelectItem value="perdido">Perdido</SelectItem>
-              <SelectItem value="encerrado">Encerrado</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatusKpi label="Em andamento" value={counts.em_andamento} barClass="bg-blue-500" total={processos.length} />
+        <StatusKpi label="Concluído" value={counts.concluido} barClass="bg-green-500" total={processos.length} />
+        <StatusKpi label="Suspenso" value={counts.suspenso} barClass="bg-muted-foreground/50" total={processos.length} />
+      </div>
 
       {filtered.length === 0 && (
         <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhum processo.</CardContent></Card>

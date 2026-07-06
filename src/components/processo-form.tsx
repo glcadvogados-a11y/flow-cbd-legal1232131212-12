@@ -114,9 +114,8 @@ export function ProcessoForm({ open, onOpenChange, patientId, editing }: Props) 
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="em_andamento">Em andamento</SelectItem>
-                  <SelectItem value="ganho">Ganho</SelectItem>
-                  <SelectItem value="perdido">Perdido</SelectItem>
-                  <SelectItem value="encerrado">Encerrado</SelectItem>
+                  <SelectItem value="concluido">Concluído</SelectItem>
+                  <SelectItem value="suspenso">Suspenso</SelectItem>
                 </SelectContent>
               </Select>
             </div>
