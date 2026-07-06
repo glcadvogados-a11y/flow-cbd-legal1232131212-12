@@ -17,7 +17,7 @@ import { formatDate } from "@/lib/format";
 import { PatientForm } from "@/components/patient-form";
 import { Plus, Pencil } from "lucide-react";
 
-export const Route = createFileRoute("/_app/pacientes")({
+export const Route = createFileRoute("/_app/pacientes/")({
   component: PacientesList,
 });
 
