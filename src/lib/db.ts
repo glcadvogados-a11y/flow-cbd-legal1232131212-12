@@ -65,9 +65,8 @@ export interface PatientProduto {
 
 export type ProcessoStatus =
   | "em_andamento"
-  | "ganho"
-  | "perdido"
-  | "encerrado";
+  | "concluido"
+  | "suspenso";
 
 export interface Processo {
   id: string;
