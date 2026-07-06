@@ -16,9 +16,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useCollection, uid, seedStatesIfEmpty, type Patient } from "@/lib/db";
+import {
+  useCollection,
+  uid,
+  seedStatesIfEmpty,
+  type Patient,
+  type PatientStatusManual,
+  type PatientProduto,
+} from "@/lib/db";
 import { maskCPF } from "@/lib/format";
 import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -28,6 +36,7 @@ interface Props {
 
 export function PatientForm({ open, onOpenChange, editing }: Props) {
   const { items: brands } = useCollection("brands");
+  const { items: products } = useCollection("products");
   const { items: states } = useCollection("states");
   const { upsert } = useCollection("patients");
 
@@ -37,6 +46,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
   const [brandId, setBrandId] = useState<string>("");
   const [frascos, setFrascos] = useState<string>("1");
   const [alerta, setAlerta] = useState<string>("90");
+  const [statusManual, setStatusManual] = useState<PatientStatusManual>("auto");
+  const [produtos, setProdutos] = useState<PatientProduto[]>([]);
 
   useEffect(() => {
     seedStatesIfEmpty();
@@ -50,6 +61,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setBrandId(editing.brandId ?? "");
       setFrascos(String(editing.frascosPorPedido));
       setAlerta(String(editing.alertaDias));
+      setStatusManual(editing.statusManual ?? "auto");
+      setProdutos(editing.produtos ?? []);
     } else {
       setNome("");
       setCpf("");
@@ -57,6 +70,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       setBrandId("");
       setFrascos("1");
       setAlerta("90");
+      setStatusManual("auto");
+      setProdutos([]);
     }
   }, [editing, open, states]);
 
@@ -79,6 +94,8 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
       frascosPorPedido: Math.max(1, parseInt(frascos, 10) || 1),
       alertaDias: Math.max(1, parseInt(alerta, 10) || 90),
       criadoEm: editing?.criadoEm ?? new Date().toISOString(),
+      statusManual,
+      produtos: produtos.filter((x) => x.productId && x.frascos > 0),
     };
     upsert(p);
     toast.success(editing ? "Paciente atualizado" : "Paciente cadastrado");
