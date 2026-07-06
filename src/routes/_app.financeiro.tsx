@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCollection } from "@/lib/db";
-import { brl, formatDate } from "@/lib/format";
+import { useCollection, type Moeda } from "@/lib/db";
+import { money, formatDate } from "@/lib/format";
 import {
   startOfMonth,
   endOfMonth,
@@ -49,17 +49,22 @@ function Financeiro() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [brandFilter, setBrandFilter] = useState<string>("all");
+  const [moeda, setMoeda] = useState<Moeda>("BRL");
 
   const interval = periodInterval(period, from, to);
+
+  const fulfillmentMoeda = (f: (typeof fulfillments)[number]): Moeda =>
+    (f.items?.[0]?.moedaSnapshot as Moeda | undefined) ?? "BRL";
 
   const filtered = useMemo(
     () =>
       fulfillments.filter((f) => {
         if (!isWithinInterval(parseISO(f.dataDispensacao), interval)) return false;
         if (brandFilter !== "all" && f.brandIdSnapshot !== brandFilter) return false;
+        if (fulfillmentMoeda(f) !== moeda) return false;
         return true;
       }),
-    [fulfillments, interval, brandFilter]
+    [fulfillments, interval, brandFilter, moeda]
   );
 
   const totalRecebido = filtered.reduce((a, f) => a + f.valorRecebido, 0);
@@ -105,6 +110,18 @@ function Financeiro() {
       <Card>
         <CardContent className="p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="space-y-1">
+              <Label className="text-xs">Moeda</Label>
+              <Select value={moeda} onValueChange={(v) => setMoeda(v as Moeda)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BRL">R$ (Real)</SelectItem>
+                  <SelectItem value="USD">US$ (Dólar)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1">
               <Label className="text-xs">Período</Label>
               <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
@@ -154,8 +171,8 @@ function Financeiro() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Stat label="Dispensações" value={String(filtered.length)} />
         <Stat label="Frascos" value={String(totalFrascos)} />
-        <Stat label="Receita (Estado)" value={brl(totalRecebido)} />
-        <Stat label="Comissão" value={brl(totalComissao)} />
+        <Stat label="Receita (Estado)" value={money(totalRecebido, moeda)} />
+        <Stat label="Comissão" value={money(totalComissao, moeda)} />
       </div>
 
       <Card>
@@ -183,8 +200,8 @@ function Financeiro() {
                     <tr key={r.nome} className="border-b last:border-0">
                       <td className="py-3 font-medium">{r.nome}</td>
                       <td className="py-3 text-right">{r.frascos}</td>
-                      <td className="py-3 text-right">{brl(r.receita)}</td>
-                      <td className="py-3 text-right">{brl(r.comissao)}</td>
+                      <td className="py-3 text-right">{money(r.receita, moeda)}</td>
+                      <td className="py-3 text-right">{money(r.comissao, moeda)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -226,9 +243,9 @@ function Financeiro() {
                         <td className="py-3">{patientName(f.patientId)}</td>
                         <td className="py-3">{f.brandNomeSnapshot}</td>
                         <td className="py-3 text-right">{f.frascos}</td>
-                        <td className="py-3 text-right">{brl(f.valorRecebido)}</td>
+                        <td className="py-3 text-right">{money(f.valorRecebido, moeda)}</td>
                         <td className="py-3 text-right">
-                          {brl(f.comissaoValorSnapshot * f.frascos)}
+                          {money(f.comissaoValorSnapshot * f.frascos, moeda)}
                         </td>
                       </tr>
                     ))}
