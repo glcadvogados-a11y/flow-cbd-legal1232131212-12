@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCollection, type Brand, type Product } from "@/lib/db";
 import { comissaoPorFrasco } from "@/lib/domain";
-import { brl, money } from "@/lib/format";
+import { money } from "@/lib/format";
 import { useFxRate, toBRL, toUSD } from "@/lib/fx";
 import { BrandForm } from "@/components/brand-form";
 import { ProductForm } from "@/components/product-form";
