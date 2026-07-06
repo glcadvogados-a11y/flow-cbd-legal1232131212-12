@@ -166,30 +166,17 @@ export function PatientForm({ open, onOpenChange, editing }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Frascos por pedido</Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                value={frascos}
-                onChange={(e) => setFrascos(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Alertar antes de vencer</Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                value={alerta}
-                onChange={(e) => setAlerta(e.target.value.replace(/[^\d]/g, ""))}
-                placeholder="90"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Alertar antes de vencer (dias)</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1}
+              value={alerta}
+              onChange={(e) => setAlerta(e.target.value.replace(/[^\d]/g, ""))}
+              placeholder="90"
+            />
           </div>
           <div className="space-y-2">
             <Label>Status do paciente</Label>
