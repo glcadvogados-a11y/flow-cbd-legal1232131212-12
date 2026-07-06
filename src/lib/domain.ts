@@ -1,5 +1,5 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
 import type {
   Fulfillment,
   FulfillmentItem,
@@ -59,6 +59,70 @@ export function computeStatus(
 
 export function comissaoPorFrasco(precoFrasco: number, pct: number): number {
   return (precoFrasco * pct) / 100;
+}
+
+// ============ CRM: contagem regressiva para novo protocolo ============
+
+export interface ProtocolCountdown {
+  hasData: boolean;
+  daysLeft: number | null;
+  deadline: string | null; // ISO date do prazo para protocolar
+  endDate: string | null; // ISO date da estimativa de término do medicamento
+  duracaoDias: number | null;
+  frascos: number;
+  frascosPorMes: number | null;
+  color: StatusColor;
+  label: string;
+}
+
+export function computeProtocolCountdown(
+  patient: Patient,
+  fulfillments: Fulfillment[]
+): ProtocolCountdown {
+  const empty: ProtocolCountdown = {
+    hasData: false,
+    daysLeft: null,
+    deadline: null,
+    endDate: null,
+    duracaoDias: null,
+    frascos: 0,
+    frascosPorMes: patient.frascosPorMes ?? null,
+    color: "gray",
+    label: "Sem dispensação",
+  };
+  const last = fulfillments
+    .filter((f) => f.patientId === patient.id && (f.status ?? "repasse_recebido") === "repasse_recebido")
+    .sort((a, b) => b.dataDispensacao.localeCompare(a.dataDispensacao))[0];
+  if (!last) return empty;
+  const frascos = frascosTotal(last);
+  const fpm = patient.frascosPorMes ?? 0;
+  if (!fpm || fpm <= 0 || !frascos) {
+    return { ...empty, hasData: false, label: "Informe frascos/mês" };
+  }
+  const duracao = Math.round((frascos / fpm) * 30);
+  const start = parseISO(last.dataDispensacao);
+  const end = addDays(start, duracao);
+  const deadline = addDays(end, -patient.alertaDias);
+  const days = differenceInCalendarDays(deadline, new Date());
+  const color: StatusColor =
+    days < 0 ? "red" : days <= Math.max(15, Math.round(patient.alertaDias / 3)) ? "yellow" : "green";
+  const label =
+    days < 0
+      ? `Atrasado ${Math.abs(days)}d`
+      : days === 0
+        ? "Protocolar hoje"
+        : `${days}d p/ protocolar`;
+  return {
+    hasData: true,
+    daysLeft: days,
+    deadline: format(deadline, "yyyy-MM-dd"),
+    endDate: format(end, "yyyy-MM-dd"),
+    duracaoDias: duracao,
+    frascos,
+    frascosPorMes: fpm,
+    color,
+    label,
+  };
 }
 
 // ============ Funil de status ============
