@@ -24,9 +24,35 @@ const STATUS_LABEL: Record<string, string> = {
   em_andamento: "Em andamento",
   concluido: "Concluído",
   suspenso: "Suspenso",
-  concluido: "Concluído",
   cancelado: "Cancelado",
 };
+
+function StatusKpi({
+  label,
+  value,
+  barClass,
+  total,
+}: {
+  label: string;
+  value: number;
+  barClass: string;
+  total: number;
+}) {
+  const pct = total > 0 ? Math.max(6, Math.round((value / total) * 100)) : 0;
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div className={`h-full ${barClass}`} style={{ width: `${pct}%` }} />
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-2xl font-semibold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function ProcessosPage() {
   const { items: processos, remove } = useCollection("processos");
