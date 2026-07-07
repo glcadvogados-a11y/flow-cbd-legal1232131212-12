@@ -145,6 +145,8 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
     const id = editing?.id ?? uid();
     const finalDataConclusao =
       status === "concluido" ? dataConclusao || todayISO() : "";
+    const finalPeriodoInicio = finalDataConclusao || dataProtocolo;
+    const finalPeriodoFim = computePeriodoFim(finalPeriodoInicio, duracaoMeses);
 
     // Registrar / atualizar / remover a dispensa vinculada
     let fulfillmentId: string | null = editing?.fulfillmentId ?? null;
@@ -170,7 +172,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
         status: "repasse_recebido",
         dataProtocolo,
         dataDispensacao: finalDataConclusao,
-        dataVencimento: periodoFim || finalDataConclusao,
+        dataVencimento: finalPeriodoFim || finalDataConclusao,
         frascos: totalFrascos,
         valorRecebido: totalComissao,
         observacoes: observacoes.trim(),
@@ -208,8 +210,8 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
       processoId,
       numero: numero.trim(),
       dataProtocolo,
-      periodoInicio: finalDataConclusao || dataProtocolo,
-      periodoFim: periodoFim || undefined,
+      periodoInicio: finalPeriodoInicio,
+      periodoFim: finalPeriodoFim || undefined,
       status,
       observacoes: observacoes.trim() || undefined,
       duracaoMeses,
