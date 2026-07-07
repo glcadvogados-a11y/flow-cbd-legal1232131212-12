@@ -101,10 +101,11 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
       items.map((it) => {
         const prod = products.find((p) => p.id === it.productId);
         const brand = brands.find((b) => b.id === prod?.brandId);
-        const receita = (prod?.precoFrasco ?? 0) * it.frascos;
+        const preco = it.precoFrascoOverride ?? prod?.precoFrasco ?? 0;
+        const receita = preco * it.frascos;
         const comissao = (receita * (prod?.comissaoPct ?? 0)) / 100;
         const moeda = prod?.moeda ?? "BRL";
-        return { it, prod, brand, moeda, receita, comissao };
+        return { it, prod, brand, moeda, preco, receita, comissao };
       }),
     [items, products, brands]
   );
@@ -159,7 +160,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
         productId: l.prod?.id ?? null,
         brandNomeSnapshot: l.brand?.nome ?? "—",
         tipoSnapshot: l.prod?.tipo ?? "—",
-        precoFrascoSnapshot: l.prod?.precoFrasco ?? 0,
+        precoFrascoSnapshot: l.preco,
         comissaoPctSnapshot: l.prod?.comissaoPct ?? 0,
         frascos: l.it.frascos,
         moedaSnapshot: l.prod?.moeda ?? "BRL",
@@ -179,7 +180,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
         observacoes: observacoes.trim(),
         brandIdSnapshot: first?.brand?.id ?? null,
         brandNomeSnapshot: first?.brand?.nome ?? "—",
-        precoFrascoSnapshot: first?.prod?.precoFrasco ?? 0,
+        precoFrascoSnapshot: first?.preco ?? 0,
         comissaoPctSnapshot: first?.prod?.comissaoPct ?? 0,
         comissaoValorSnapshot: totalFrascos > 0 ? totalComissao / totalFrascos : 0,
         items: itemsSnap,
@@ -345,7 +346,25 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                     }
                   />
                 </div>
-                <div className="col-span-2" />
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs">
+                    Preço {l.prod ? `(${l.moeda})` : ""}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={String(l.preco)}
+                    onChange={(e) =>
+                      updateItem(i, {
+                        precoFrascoOverride: Math.max(
+                          0,
+                          parseFloat(e.target.value) || 0
+                        ),
+                      })
+                    }
+                  />
+                </div>
                 <div className="col-span-1 text-right">
                   <Button
                     type="button"
