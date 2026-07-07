@@ -346,7 +346,25 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                     }
                   />
                 </div>
-                <div className="col-span-2" />
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs">
+                    Preço {l.prod ? `(${l.moeda})` : ""}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={String(l.preco)}
+                    onChange={(e) =>
+                      updateItem(i, {
+                        precoFrascoOverride: Math.max(
+                          0,
+                          parseFloat(e.target.value) || 0
+                        ),
+                      })
+                    }
+                  />
+                </div>
                 <div className="col-span-1 text-right">
                   <Button
                     type="button"
