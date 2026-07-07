@@ -59,6 +59,7 @@ function ProcessosPage() {
   const { items: cumprimentos, remove: removeCump } = useCollection("cumprimentos");
   const { items: patients } = useCollection("patients");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("paciente_az");
   const [patientId, setPatientId] = useState<string>("");
   const [procOpen, setProcOpen] = useState(false);
   const [procEditing, setProcEditing] = useState<Processo | null>(null);
@@ -76,6 +77,22 @@ function ProcessosPage() {
   const filtered = processos.filter(
     (p) => statusFilter === "all" || normalize(p.status) === statusFilter
   );
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortBy) {
+      case "paciente_az":
+        return patientName(a.patientId).localeCompare(patientName(b.patientId), "pt-BR");
+      case "paciente_za":
+        return patientName(b.patientId).localeCompare(patientName(a.patientId), "pt-BR");
+      case "protocolo_desc":
+        return (b.dataProtocolo ?? "").localeCompare(a.dataProtocolo ?? "");
+      case "protocolo_asc":
+        return (a.dataProtocolo ?? "").localeCompare(b.dataProtocolo ?? "");
+      case "status":
+        return normalize(a.status).localeCompare(normalize(b.status));
+      default:
+        return 0;
+    }
+  });
   const allExpanded = filtered.length > 0 && filtered.every((p) => expanded[p.id]);
   const setAll = (v: boolean) => {
     const next: Record<string, boolean> = {};
@@ -99,6 +116,16 @@ function ProcessosPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="paciente_az">Paciente (A→Z)</SelectItem>
+              <SelectItem value="paciente_za">Paciente (Z→A)</SelectItem>
+              <SelectItem value="protocolo_desc">Protocolo (mais recente)</SelectItem>
+              <SelectItem value="protocolo_asc">Protocolo (mais antigo)</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -150,7 +177,7 @@ function ProcessosPage() {
       )}
 
       <div className="space-y-3">
-        {filtered.map((proc) => {
+        {sorted.map((proc) => {
           const cumps = cumprimentos.filter((c) => c.processoId === proc.id);
           const isOpen = expanded[proc.id] ?? false;
           return (
