@@ -100,6 +100,7 @@ export interface Cumprimento {
 export interface CumprimentoItem {
   productId: string | null;
   frascos: number;
+  precoFrascoOverride?: number;
 }
 
 export type FunilStatus =
