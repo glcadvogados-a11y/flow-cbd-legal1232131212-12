@@ -27,6 +27,7 @@ import {
   type CumprimentoStatus,
   type Fulfillment,
   type FulfillmentItem,
+  type FunilStatus,
 } from "@/lib/db";
 import { brl, money, todayISO } from "@/lib/format";
 import { useFxRate, toBRL } from "@/lib/fx";
@@ -139,8 +140,18 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
       toast.error("Informe o número do cumprimento");
       return;
     }
-    if (status === "concluido" && items.length === 0) {
-      toast.error("Adicione ao menos um produto para concluir a dispensa");
+    const funnelStatus: FunilStatus | null =
+      status === "concluido"
+        ? "repasse_recebido"
+        : status === "desembaraco"
+          ? "desembaraco_rf"
+          : status === "li_emitida"
+            ? "li_emitida"
+            : status === "invoice"
+              ? "invoice_enviado"
+              : null;
+    if (funnelStatus && items.length === 0) {
+      toast.error("Adicione ao menos um produto para este status");
       return;
     }
 
@@ -152,7 +163,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
 
     // Registrar / atualizar / remover a dispensa vinculada
     let fulfillmentId: string | null = editing?.fulfillmentId ?? null;
-    if (status === "concluido" && processo) {
+    if (funnelStatus && processo) {
       const existing = fulfillmentId
         ? fulfillments.find((f) => f.id === fulfillmentId)
         : fulfillments.find((f) => f.cumprimentoId === id);
@@ -166,12 +177,19 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
         moedaSnapshot: l.prod?.moeda ?? "BRL",
       }));
       const first = lines[0];
+      const reachedLI =
+        funnelStatus === "li_emitida" ||
+        funnelStatus === "desembaraco_rf" ||
+        funnelStatus === "repasse_recebido";
+      const reachedDesemb =
+        funnelStatus === "desembaraco_rf" ||
+        funnelStatus === "repasse_recebido";
       const f: Fulfillment = {
         id: existing?.id ?? uid(),
         patientId: processo.patientId,
         numeroCumprimento: numero.trim(),
         cumprimentoId: id,
-        status: "repasse_recebido",
+        status: funnelStatus,
         dataProtocolo,
         dataDispensacao: finalDataConclusao,
         dataVencimento: finalPeriodoFim || finalDataConclusao,
@@ -186,14 +204,17 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
         items: itemsSnap,
         valorVendidoEstado: totalReceita,
         dataInvoiceSolicitada: existing?.dataInvoiceSolicitada ?? dataProtocolo,
-        dataInvoiceEnviado: existing?.dataInvoiceEnviado ?? null,
+        dataInvoiceEnviado:
+          existing?.dataInvoiceEnviado ??
+          (funnelStatus !== "invoice_enviado" ? null : dataProtocolo),
         dataAguardandoLI: existing?.dataAguardandoLI ?? null,
-        dataLI: existing?.dataLI ?? finalDataConclusao,
+        dataLI: existing?.dataLI ?? (reachedLI ? dataProtocolo : null),
         dataTransito: existing?.dataTransito ?? null,
-        dataDesembaraco: existing?.dataDesembaraco ?? null,
+        dataDesembaraco:
+          existing?.dataDesembaraco ?? (reachedDesemb ? todayISO() : null),
         dataLiberadoSES: existing?.dataLiberadoSES ?? null,
         dataPagoSES: existing?.dataPagoSES ?? null,
-        dataRepasse: finalDataConclusao,
+        dataRepasse: status === "concluido" ? finalDataConclusao : null,
         etaDias: existing?.etaDias ?? 21,
         fxTaxaFechada: existing?.fxTaxaFechada ?? null,
         fxDataFechamento: existing?.fxDataFechamento ?? null,
@@ -202,7 +223,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
       upsertFulfillment(f);
       fulfillmentId = f.id;
     } else if (fulfillmentId) {
-      // Se saiu de concluído, remove a dispensa gerada
+      // em_andamento / cancelado: remove a dispensa gerada
       removeFulfillment(fulfillmentId);
       fulfillmentId = null;
     }
@@ -417,6 +438,9 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="em_andamento">Em andamento</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                  <SelectItem value="li_emitida">L.I. Emitida</SelectItem>
+                  <SelectItem value="desembaraco">Desembaraço</SelectItem>
                   <SelectItem value="concluido">Concluído</SelectItem>
                   <SelectItem value="cancelado">Cancelado</SelectItem>
                 </SelectContent>
