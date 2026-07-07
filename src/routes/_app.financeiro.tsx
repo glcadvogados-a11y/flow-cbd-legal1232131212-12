@@ -56,7 +56,7 @@ function Financeiro() {
   const { rate, updatedAt } = useFxRate();
   const [period, setPeriod] = useState<Period>("mes");
   const [projMes, setProjMes] = useState<string>("todos");
-  const [projAno, setProjAno] = useState<number>(new Date().getFullYear());
+  const [projAno, setProjAno] = useState<string>("todos");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [brandFilter, setBrandFilter] = useState<string>("all");
@@ -143,11 +143,11 @@ function Financeiro() {
   const patientName = (id: string) =>
     patients.find((p) => p.id === id)?.nome ?? "—";
 
-  const anoAtual = projAno;
   const doAno = fulfillments.filter((f) => {
     if (isCancelled(f)) return false;
+    if (projAno === "todos") return true;
     const d = dataRelevante(f);
-    return d?.startsWith(String(anoAtual));
+    return d?.startsWith(projAno);
   });
   const noMes = (f: (typeof fulfillments)[number]) => {
     if (projMes === "todos") return true;
@@ -194,9 +194,10 @@ function Financeiro() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="space-y-1">
               <Label className="text-xs">Ano</Label>
-              <Select value={String(projAno)} onValueChange={(v) => setProjAno(Number(v))}>
+              <Select value={projAno} onValueChange={setProjAno}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="todos">Todos os anos</SelectItem>
                   {anosDisponiveis.map((a) => (
                     <SelectItem key={a} value={String(a)}>{a}</SelectItem>
                   ))}
@@ -231,7 +232,7 @@ function Financeiro() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <KpiCard
-          label={`Nossa receita recebida (${anoAtual}${projMes === "todos" ? "" : "/" + projMes})`}
+          label={`Nossa receita recebida (${projAno === "todos" ? "todos os anos" : projAno}${projMes === "todos" ? "" : "/" + projMes})`}
           value={money(recebidoAno, moeda)}
           hint={`${recebidosList.length} cumprimento(s) concluído(s)`}
           tone="success"
