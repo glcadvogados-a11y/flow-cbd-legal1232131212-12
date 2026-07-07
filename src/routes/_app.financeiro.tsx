@@ -53,6 +53,8 @@ function Financeiro() {
   const { items: fulfillments } = useCollection("fulfillments");
   const { items: patients } = useCollection("patients");
   const { items: brands } = useCollection("brands");
+  const { items: cumprimentos } = useCollection("cumprimentos");
+  const { items: processos } = useCollection("processos");
   const { rate, updatedAt } = useFxRate();
   const [period, setPeriod] = useState<Period>("ano");
   const [projMes, setProjMes] = useState<string>("todos");
@@ -63,6 +65,25 @@ function Financeiro() {
   const [moeda, setMoeda] = useState<Moeda>("BRL");
 
   const interval = periodInterval(period, from, to);
+
+  // Resolve o status do processo vinculado a um fulfillment (via cumprimento).
+  // Regras: "concluido" => realizado; "li_emitida" | "desembaraco" => projetado;
+  // "suspenso" => excluído; demais => sem override (usa funil do fulfillment).
+  const processoStatusOf = (f: (typeof fulfillments)[number]): string | null => {
+    if (!f.cumprimentoId) return null;
+    const c = cumprimentos.find((x) => x.id === f.cumprimentoId);
+    if (!c) return null;
+    const p = processos.find((x) => x.id === c.processoId);
+    return p?.status ?? null;
+  };
+  const realizedByProcesso = (f: (typeof fulfillments)[number]) =>
+    processoStatusOf(f) === "concluido";
+  const projectedByProcesso = (f: (typeof fulfillments)[number]) => {
+    const s = processoStatusOf(f);
+    return s === "li_emitida" || s === "desembaraco";
+  };
+  const excludedByProcesso = (f: (typeof fulfillments)[number]) =>
+    processoStatusOf(f) === "suspenso";
 
   const conv = (valor: number, origem: Moeda, taxa: number | null): number => {
     if (moeda === "BRL") {
@@ -102,13 +123,14 @@ function Financeiro() {
     () =>
       fulfillments.filter((f) => {
         if (isCancelled(f)) return false;
+        if (excludedByProcesso(f)) return false;
         const d = dataRelevante(f);
         if (!d) return false;
         if (!isWithinInterval(parseISO(d), interval)) return false;
         if (brandFilter !== "all" && f.brandIdSnapshot !== brandFilter) return false;
         return true;
       }),
-    [fulfillments, interval, brandFilter],
+    [fulfillments, interval, brandFilter, cumprimentos, processos],
   );
 
   const totalReceita = filtered.reduce((a, f) => a + nossaReceita(f), 0);
@@ -154,11 +176,18 @@ function Financeiro() {
     const d = dataRelevante(f) || "";
     return d.slice(5, 7) === projMes;
   };
-  const recebidosList = doAno.filter((f) => isRealized(f)).filter(noMes);
+  const recebidosList = doAno
+    .filter((f) => !excludedByProcesso(f))
+    .filter((f) => realizedByProcesso(f) || (processoStatusOf(f) === null && isRealized(f)))
+    .filter(noMes);
   const recebidoAno = recebidosList.reduce((a, f) => a + nossaReceita(f), 0);
-  const abertosList = fulfillments.filter(
-    (f) => isProjected(f) && !isRealized(f) && !isCancelled(f),
-  );
+  const abertosList = fulfillments.filter((f) => {
+    if (isCancelled(f) || excludedByProcesso(f)) return false;
+    if (realizedByProcesso(f)) return false;
+    if (projectedByProcesso(f)) return true;
+    // Sem processo vinculado: usa funil do fulfillment
+    return processoStatusOf(f) === null && isProjected(f) && !isRealized(f);
+  });
   const projecaoReceber = abertosList.reduce((a, f) => a + nossaReceita(f), 0);
   const totalFuturo = recebidoAno + projecaoReceber;
   const anosDisponiveis = useMemo(() => {
