@@ -41,10 +41,10 @@ interface Props {
 
 const DURACOES = [3, 6, 12, 24];
 
-function computePeriodoFim(dataProtocolo: string, meses: number) {
-  if (!dataProtocolo || !meses) return "";
+function computePeriodoFim(dataInicio: string, meses: number) {
+  if (!dataInicio || !meses) return "";
   try {
-    return format(addMonths(parseISO(dataProtocolo), meses), "yyyy-MM-dd");
+    return format(addMonths(parseISO(dataInicio), meses), "yyyy-MM-dd");
   } catch {
     return "";
   }
@@ -89,9 +89,10 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
     }
   }, [open, editing]);
 
+  const periodoInicio = dataConclusao || dataProtocolo;
   const periodoFim = useMemo(
-    () => computePeriodoFim(dataProtocolo, duracaoMeses),
-    [dataProtocolo, duracaoMeses]
+    () => computePeriodoFim(periodoInicio, duracaoMeses),
+    [periodoInicio, duracaoMeses]
   );
 
   const lines = useMemo(
@@ -207,7 +208,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
       processoId,
       numero: numero.trim(),
       dataProtocolo,
-      periodoInicio: dataProtocolo,
+      periodoInicio: finalDataConclusao || dataProtocolo,
       periodoFim: periodoFim || undefined,
       status,
       observacoes: observacoes.trim() || undefined,
