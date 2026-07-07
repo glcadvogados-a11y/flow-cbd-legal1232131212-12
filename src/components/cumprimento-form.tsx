@@ -89,7 +89,8 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
     }
   }, [open, editing]);
 
-  const periodoInicio = dataConclusao || dataProtocolo;
+  const conclusaoEfetiva = status === "concluido" ? dataConclusao || todayISO() : "";
+  const periodoInicio = conclusaoEfetiva;
   const periodoFim = useMemo(
     () => computePeriodoFim(periodoInicio, duracaoMeses),
     [periodoInicio, duracaoMeses]
@@ -145,7 +146,7 @@ export function CumprimentoForm({ open, onOpenChange, processoId, editing }: Pro
     const id = editing?.id ?? uid();
     const finalDataConclusao =
       status === "concluido" ? dataConclusao || todayISO() : "";
-    const finalPeriodoInicio = finalDataConclusao || dataProtocolo;
+    const finalPeriodoInicio = finalDataConclusao;
     const finalPeriodoFim = computePeriodoFim(finalPeriodoInicio, duracaoMeses);
 
     // Registrar / atualizar / remover a dispensa vinculada
