@@ -65,13 +65,7 @@ export interface PatientProduto {
   frascos: number;
 }
 
-export type ProcessoStatus =
-  | "em_andamento"
-  | "invoice"
-  | "li_emitida"
-  | "desembaraco"
-  | "concluido"
-  | "suspenso";
+export type ProcessoStatus = "em_andamento" | "concluido" | "suspenso";
 
 export interface Processo {
   id: string;

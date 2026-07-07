@@ -22,9 +22,6 @@ export const Route = createFileRoute("/_app/processos")({
 
 const STATUS_LABEL: Record<string, string> = {
   em_andamento: "Em andamento",
-  invoice: "Invoice",
-  li_emitida: "L.I. Emitida",
-  desembaraco: "Desembaraço",
   concluido: "Concluído",
   suspenso: "Suspenso",
   cancelado: "Cancelado",
@@ -74,8 +71,8 @@ function ProcessosPage() {
 
   const patientName = (id: string) => patients.find((p) => p.id === id)?.nome ?? "—";
 
-  const KNOWN = ["em_andamento", "invoice", "li_emitida", "desembaraco", "concluido", "suspenso"];
-  const normalize = (s: string) => (KNOWN.includes(s) ? s : "em_andamento");
+  const normalize = (s: string) =>
+    s === "concluido" || s === "suspenso" ? s : "em_andamento";
 
   const filtered = processos.filter(
     (p) => statusFilter === "all" || normalize(p.status) === statusFilter
@@ -134,9 +131,6 @@ function ProcessosPage() {
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="em_andamento">Em andamento</SelectItem>
-              <SelectItem value="invoice">Invoice</SelectItem>
-              <SelectItem value="li_emitida">L.I. Emitida</SelectItem>
-              <SelectItem value="desembaraco">Desembaraço</SelectItem>
               <SelectItem value="concluido">Concluído</SelectItem>
               <SelectItem value="suspenso">Suspenso</SelectItem>
             </SelectContent>
