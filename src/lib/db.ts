@@ -80,7 +80,13 @@ export interface Processo {
   criadoEm: string;
 }
 
-export type CumprimentoStatus = "em_andamento" | "concluido" | "cancelado";
+export type CumprimentoStatus =
+  | "em_andamento"
+  | "invoice"
+  | "li_emitida"
+  | "desembaraco"
+  | "concluido"
+  | "cancelado";
 
 export interface Cumprimento {
   id: string;

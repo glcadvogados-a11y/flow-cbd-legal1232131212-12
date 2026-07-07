@@ -22,6 +22,9 @@ export const Route = createFileRoute("/_app/processos")({
 
 const STATUS_LABEL: Record<string, string> = {
   em_andamento: "Em andamento",
+  invoice: "Invoice",
+  li_emitida: "L.I. Emitida",
+  desembaraco: "Desembaraço",
   concluido: "Concluído",
   suspenso: "Suspenso",
   cancelado: "Cancelado",
