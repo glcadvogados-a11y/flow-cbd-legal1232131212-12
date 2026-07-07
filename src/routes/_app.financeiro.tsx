@@ -54,7 +54,7 @@ function Financeiro() {
   const { items: patients } = useCollection("patients");
   const { items: brands } = useCollection("brands");
   const { rate, updatedAt } = useFxRate();
-  const [period, setPeriod] = useState<Period>("mes");
+  const [period, setPeriod] = useState<Period>("ano");
   const [projMes, setProjMes] = useState<string>("todos");
   const [projAno, setProjAno] = useState<string>("todos");
   const [from, setFrom] = useState("");
@@ -255,15 +255,15 @@ function Financeiro() {
         <CardContent className="p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="space-y-1">
-              <Label className="text-xs">Período (detalhamento)</Label>
+              <Label className="text-xs">Período</Label>
               <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="mes">Mês atual</SelectItem>
-                  <SelectItem value="trimestre">Trimestre atual</SelectItem>
-                  <SelectItem value="ano">Ano atual</SelectItem>
+                  <SelectItem value="mes">Mês</SelectItem>
+                  <SelectItem value="trimestre">Trimestre</SelectItem>
+                  <SelectItem value="ano">Ano</SelectItem>
                   <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
