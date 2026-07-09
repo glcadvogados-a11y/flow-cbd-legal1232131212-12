@@ -61,7 +61,6 @@ function ProcessosPage() {
   const { items: processos, remove } = useCollection("processos");
   const { items: cumprimentos, remove: removeCump } = useCollection("cumprimentos");
   const { items: patients } = useCollection("patients");
-  const { items: fulfillments, remove: removeFulfillment } = useCollection("fulfillments");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("paciente_az");
   const [patientId, setPatientId] = useState<string>("");
@@ -223,8 +222,8 @@ function ProcessosPage() {
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => {
-                      if (cumps.length > 0) { toast.error("Remova os cumprimentos primeiro"); return; }
-                      if (confirm(`Excluir processo ${proc.numeroCNJ}?`)) { remove(proc.id); toast.success("Excluído"); }
+                      const suffix = cumps.length > 0 ? " e todos os cumprimentos/fornecimentos vinculados" : "";
+                      if (confirm(`Excluir processo ${proc.numeroCNJ}${suffix}?`)) { remove(proc.id); toast.success("Excluído"); }
                     }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -259,10 +258,6 @@ function ProcessosPage() {
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => {
                                 if (confirm(`Excluir cumprimento ${c.numero}?`)) {
-                                  const linked = fulfillments.filter(
-                                    (f) => f.cumprimentoId === c.id,
-                                  );
-                                  linked.forEach((f) => removeFulfillment(f.id));
                                   removeCump(c.id);
                                   toast.success("Excluído");
                                 }
