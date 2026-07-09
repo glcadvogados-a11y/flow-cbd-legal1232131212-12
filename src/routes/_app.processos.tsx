@@ -61,6 +61,7 @@ function ProcessosPage() {
   const { items: processos, remove } = useCollection("processos");
   const { items: cumprimentos, remove: removeCump } = useCollection("cumprimentos");
   const { items: patients } = useCollection("patients");
+  const { items: fulfillments, remove: removeFulfillment } = useCollection("fulfillments");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("paciente_az");
   const [patientId, setPatientId] = useState<string>("");
@@ -181,7 +182,11 @@ function ProcessosPage() {
 
       <div className="space-y-3">
         {sorted.map((proc) => {
-          const cumps = cumprimentos.filter((c) => c.processoId === proc.id);
+          const cumps = cumprimentos
+            .filter((c) => c.processoId === proc.id)
+            .sort((a, b) =>
+              (b.dataProtocolo ?? "").localeCompare(a.dataProtocolo ?? ""),
+            );
           const isOpen = expanded[proc.id] ?? false;
           return (
             <Card key={proc.id}>
@@ -253,7 +258,14 @@ function ProcessosPage() {
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => {
-                                if (confirm(`Excluir cumprimento ${c.numero}?`)) { removeCump(c.id); toast.success("Excluído"); }
+                                if (confirm(`Excluir cumprimento ${c.numero}?`)) {
+                                  const linked = fulfillments.filter(
+                                    (f) => f.cumprimentoId === c.id,
+                                  );
+                                  linked.forEach((f) => removeFulfillment(f.id));
+                                  removeCump(c.id);
+                                  toast.success("Excluído");
+                                }
                               }}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
