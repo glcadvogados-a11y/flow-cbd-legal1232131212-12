@@ -286,6 +286,78 @@ function migrateFulfillment(f: Fulfillment): Fulfillment {
   };
 }
 
+async function removeRecords<K extends Key>(k: K, ids: string[]) {
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (uniqueIds.length === 0) return;
+  cache[k] = ((cache[k] as Model[K][]) ?? []).filter(
+    (x) => !uniqueIds.includes((x as { id: string }).id),
+  );
+  notify(k);
+  const { error } = await supabase
+    .from("records")
+    .delete()
+    .eq("collection", k)
+    .in("id", uniqueIds);
+  if (error) console.error("[db] cascade remove", k, error);
+}
+
+async function removeDependents<K extends Key>(k: K, id: string) {
+  if (k === "cumprimentos") {
+    const fulfillments = await ensureLoaded("fulfillments");
+    await removeRecords(
+      "fulfillments",
+      fulfillments.filter((f) => f.cumprimentoId === id).map((f) => f.id),
+    );
+    return;
+  }
+
+  if (k === "processos") {
+    const cumprimentos = await ensureLoaded("cumprimentos");
+    const cumprimentoIds = cumprimentos
+      .filter((c) => c.processoId === id)
+      .map((c) => c.id);
+    const linked = new Set(cumprimentoIds);
+    const fulfillments = await ensureLoaded("fulfillments");
+    await removeRecords(
+      "fulfillments",
+      fulfillments.filter((f) => f.cumprimentoId && linked.has(f.cumprimentoId)).map((f) => f.id),
+    );
+    await removeRecords("cumprimentos", cumprimentoIds);
+    return;
+  }
+
+  if (k === "patients") {
+    const processos = await ensureLoaded("processos");
+    const processoIds = processos.filter((p) => p.patientId === id).map((p) => p.id);
+    const linkedProcessos = new Set(processoIds);
+    const cumprimentos = await ensureLoaded("cumprimentos");
+    const cumprimentoIds = cumprimentos
+      .filter((c) => linkedProcessos.has(c.processoId))
+      .map((c) => c.id);
+    const linkedCumprimentos = new Set(cumprimentoIds);
+    const fulfillments = await ensureLoaded("fulfillments");
+    const consultas = await ensureLoaded("consultas");
+    const receitas = await ensureLoaded("receitas");
+
+    await removeRecords(
+      "fulfillments",
+      fulfillments
+        .filter((f) => f.patientId === id || (f.cumprimentoId && linkedCumprimentos.has(f.cumprimentoId)))
+        .map((f) => f.id),
+    );
+    await removeRecords("cumprimentos", cumprimentoIds);
+    await removeRecords("processos", processoIds);
+    await removeRecords(
+      "consultas",
+      consultas.filter((c) => c.patientId === id).map((c) => c.id),
+    );
+    await removeRecords(
+      "receitas",
+      receitas.filter((r) => r.patientId === id).map((r) => r.id),
+    );
+  }
+}
+
 export function useCollection<K extends Key>(key: K) {
   const [items, setItems] = useState<Model[K][]>(
     () => (cache[key] as Model[K][]) ?? [],
@@ -328,17 +400,8 @@ export function useCollection<K extends Key>(key: K) {
 
   const remove = useCallback(
     async (id: string) => {
-      const list = ((cache[key] as Model[K][]) ?? []).filter(
-        (x) => (x as { id: string }).id !== id,
-      );
-      cache[key] = list;
-      notify(key);
-      const { error } = await supabase
-        .from("records")
-        .delete()
-        .eq("id", id)
-        .eq("collection", key);
-      if (error) console.error("[db] remove", key, error);
+      await removeDependents(key, id);
+      await removeRecords(key, [id]);
     },
     [key],
   );
