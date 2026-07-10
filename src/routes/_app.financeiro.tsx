@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useCollection, type Moeda } from "@/lib/db";
 import { money, formatDate } from "@/lib/format";
 import {
@@ -61,6 +62,7 @@ function Financeiro() {
   const [to, setTo] = useState("");
   const [brandFilter, setBrandFilter] = useState<string>("all");
   const [moeda, setMoeda] = useState<Moeda>("BRL");
+  const [incluirProjecoes, setIncluirProjecoes] = useState(false);
 
   const interval = periodInterval(period, from, to);
 
@@ -102,13 +104,14 @@ function Financeiro() {
     () =>
       fulfillments.filter((f) => {
         if (isCancelled(f)) return false;
+        if (!incluirProjecoes && !isRealized(f)) return false;
         const d = dataRelevante(f);
         if (!d) return false;
         if (!isWithinInterval(parseISO(d), interval)) return false;
         if (brandFilter !== "all" && f.brandIdSnapshot !== brandFilter) return false;
         return true;
       }),
-    [fulfillments, interval, brandFilter],
+    [fulfillments, interval, brandFilter, incluirProjecoes],
   );
 
   const totalReceita = filtered.reduce((a, f) => a + nossaReceita(f), 0);
@@ -297,11 +300,24 @@ function Financeiro() {
               </>
             )}
           </div>
+          <div className="mt-4 flex items-center gap-3 border-t pt-4">
+            <Switch
+              id="incluir-projecoes"
+              checked={incluirProjecoes}
+              onCheckedChange={setIncluirProjecoes}
+            />
+            <Label htmlFor="incluir-projecoes" className="text-sm">
+              Incluir projeções nas dispensações e totais do período
+            </Label>
+          </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Stat label="Dispensações" value={String(filtered.length)} />
+        <Stat
+          label={incluirProjecoes ? "Dispensações (real + proj.)" : "Dispensações realizadas"}
+          value={String(filtered.length)}
+        />
         <Stat label="Frascos" value={String(totalFrascos)} />
         <Stat label="Nossa receita" value={money(totalReceita, moeda)} />
         <Stat label="Bruto marcas (ref.)" value={money(totalBruto, moeda)} />
@@ -380,7 +396,9 @@ function Financeiro() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Dispensações no período</CardTitle>
+          <CardTitle>
+            {incluirProjecoes ? "Dispensações no período (realizadas + projeções)" : "Dispensações realizadas no período"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {filtered.length === 0 ? (
